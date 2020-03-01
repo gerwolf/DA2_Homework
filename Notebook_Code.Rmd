@@ -10,7 +10,7 @@ This is the mark-up file for the Datenanalyse 2 homework assignment.
 
 ```{r}
 library("rio")
-x <- import("https://docs.google.com/spreadsheets/d/1vsm3Had8R-6XWzh699PT2QxGwYbrXwXhLPCRt15PmqY/export?format=csv&gid=981990465")
+x <- import("https://docs.google.com/spreadsheets/d/1SWEakSjZUvvV3w8peOf5FHrGI9NTEDls3c9zETVZ5kQ/export?format=csv&gid=447556196")
 
 ```
 
@@ -33,16 +33,290 @@ pairs(selected_pairs, cex=0.5)
 ```
 
 
+Descriptive statistics
+
+```{r}
+
+summary(numeric_x)
+
+```
+
+
+Histograms and kernel density plots of base variables
+
+```{r}
+par(mfrow=c(4,6))
+
+hist(x$Artist_Albums_Number, probability = TRUE, col = "gray")
+lines(density(x$Artist_Albums_Number), col = "red")
+
+hist(x$Artist_Albums_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(x$Artist_Albums_Tracks_Number), col = "red")
+
+hist(x$Artist_Appearances_Number, probability = TRUE, col = "gray")
+lines(density(x$Artist_Appearances_Number), col = "red")
+
+hist(x$Artist_Appearances_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(x$Artist_Appearances_Tracks_Number), col = "red")
+
+hist(x$Artist_Follower, probability = TRUE, col = "gray")
+lines(density(x$Artist_Follower), col = "red")
+
+hist(x$Artist_Popularity, probability = TRUE, col = "gray")
+lines(density(x$Artist_Popularity), col = "red")
+
+hist(x$Artist_Singles_Number, probability = TRUE, col = "gray")
+lines(density(x$Artist_Singles_Number), col = "red")
+
+hist(x$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(x$Artist_Singles_Tracks_Number), col = "red")
+
+hist(x$Streams, probability = TRUE, col = "gray")
+lines(density(x$Streams), col = "red")
+
+hist(x$Track_Duration_ms, probability = TRUE, col = "gray")
+lines(density(x$Track_Duration_ms), col = "red")
+
+hist(x$Track_Popularity, probability = TRUE, col = "gray")
+lines(density(x$Track_Popularity), col = "red")
+
+hist(x$Title_Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(x$Title_Artist_Google_searches_11m), col = "red")
+
+hist(x$Title_Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(x$Title_Artist_Youtube_searches_11m), col = "red")
+
+hist(x$Title_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(x$Title_Google_searches_11m), col = "red")
+
+hist(x$Total_tracks, probability = TRUE, col = "gray")
+lines(density(x$Total_tracks), col = "red")
+
+hist(x$Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(x$Artist_Google_searches_11m), col = "red")
+
+hist(x$Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(x$Artist_Youtube_searches_11m), col = "red")
+
+hist(x$commentCount, probability = TRUE, col = "gray")
+lines(density(x$commentCount, na.rm = TRUE), col = "red")
+
+hist(x$dislikeCount, probability = TRUE, col = "gray")
+lines(density(x$dislikeCount), col = "red")
+
+hist(log(x$viewsCount), probability = TRUE, col = "gray")
+lines(density(log(x$viewsCount)), col = "red")
+```
+
+Distribution test
+
+```{r}
+
+strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Streams', 'Track_Duration_ms',
+                                 'viewsCount', 'Artist_Google_searches_11m')
+
+
+summary(select(x, strictly_positive_variables))
+
+
+library("psych")
+library("car")
+
+ksD <- function (p, x) {
+  y <- bcPower(x, p)
+  ks.test(y, "pnorm", mean=mean(y), sd=sd(y))$statistic
+}
+
+for (column in strictly_positive_variables){
+  
+  x_sub <- as.numeric(x[[paste(column)]])
+  
+  result <- optimize(ksD, c(-5,5), x=x_sub)
+  
+  message(paste(column, ', minimum value is: ', result$minimum))
+  
+}
+
+
+
+
+
+
+
+
+
+```
+
+
+
+Variable transformations
+
+1) Z-Transformation
+
+```{r}
+
+numeric_x_scaled <- scale(numeric_x, center = TRUE, scale = TRUE)
+numeric_x_scaled <- as.data.frame(numeric_x_scaled)
+
+par(mfrow=c(4,6))
+
+hist(numeric_x_scaled$Artist_Albums_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Albums_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Albums_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Albums_Tracks_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Appearances_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Appearances_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Appearances_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Appearances_Tracks_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Follower, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Follower), col = "red")
+
+hist(numeric_x_scaled$Artist_Popularity, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Popularity), col = "red")
+
+hist(numeric_x_scaled$Artist_Singles_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Singles_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Singles_Tracks_Number), col = "red")
+
+hist(numeric_x_scaled$Streams, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Streams), col = "red")
+
+hist(numeric_x_scaled$Track_Duration_ms, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Track_Duration_ms), col = "red")
+
+hist(numeric_x_scaled$Track_Popularity, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Track_Popularity), col = "red")
+
+hist(numeric_x_scaled$Title_Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Title_Artist_Google_searches_11m), col = "red")
+
+hist(numeric_x_scaled$Title_Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Title_Artist_Youtube_searches_11m), col = "red")
+
+hist(numeric_x_scaled$Title_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Title_Google_searches_11m), col = "red")
+
+hist(numeric_x_scaled$Total_tracks, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Total_tracks), col = "red")
+
+hist(numeric_x_scaled$Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Google_searches_11m), col = "red")
+
+hist(numeric_x_scaled$Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Youtube_searches_11m), col = "red")
+
+hist(numeric_x_scaled$commentCount, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$commentCount, na.rm = TRUE), col = "red")
+
+hist(numeric_x_scaled$dislikeCount, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$dislikeCount), col = "red")
+
+hist(log(x$viewsCount), probability = TRUE, col = "gray")
+lines(density(log(x$viewsCount)), col = "red")
+
+
+
+
+```
+
+2) Log-Transformation
+
+```{r}
+
+log_numeric_x <- log(numeric_x)
+
+par(mfrow=c(4,6))
+
+hist(log_numeric_x$Artist_Albums_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Albums_Number), col = "red")
+
+hist(log_numeric_x$Artist_Albums_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Albums_Tracks_Number), col = "red")
+
+hist(log_numeric_x$Artist_Appearances_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Appearances_Number), col = "red")
+
+hist(log_numeric_x$Artist_Appearances_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Appearances_Tracks_Number), col = "red")
+
+hist(log_numeric_x$Artist_Follower, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Follower), col = "red")
+
+hist(log_numeric_x$Artist_Popularity, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Popularity), col = "red")
+
+hist(log_numeric_x$Artist_Singles_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Singles_Number), col = "red")
+
+hist(log_numeric_x$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Singles_Tracks_Number), col = "red")
+
+hist(log_numeric_x$Streams, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Streams), col = "red")
+
+hist(log_numeric_x$Track_Duration_ms, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Track_Duration_ms), col = "red")
+
+hist(log_numeric_x$Track_Popularity, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Track_Popularity), col = "red")
+
+hist(log_numeric_x$Title_Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Title_Artist_Google_searches_11m), col = "red")
+
+hist(log_numeric_x$Title_Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Title_Artist_Youtube_searches_11m), col = "red")
+
+hist(log_numeric_x$Title_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Title_Google_searches_11m), col = "red")
+
+hist(log_numeric_x$Total_tracks, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Total_tracks), col = "red")
+
+hist(log_numeric_x$Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Google_searches_11m), col = "red")
+
+hist(log_numeric_x$Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Youtube_searches_11m), col = "red")
+
+hist(log_numeric_x$commentCount, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$commentCount, na.rm = TRUE), col = "red")
+
+hist(log_numeric_x$dislikeCount, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$dislikeCount), col = "red")
+
+hist(log_numeric_x$viewsCount, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$viewsCount), col = "red")
+
+
+
+```
+
+
+Table by genre
+
+```{r}
+
+table(x$Genre)
+
+```
+
+
 
 ```{r}
 
 ##1
-library("rio")
-x <- import("https://docs.google.com/spreadsheets/d/1vsm3Had8R-6XWzh699PT2QxGwYbrXwXhLPCRt15PmqY/export?format=csv&gid=981990465")
 
 col <- ifelse(x$Genre == "Hip Hop", "black", "red")
 
 plot(x$viewsCount, x$Streams, main="Music streams", pch=19, col=col)
+
+plot(log(x$viewsCount), log(x$Streams), main="Music streams", pch=19, col=col)
 
 
 ```
@@ -140,9 +414,25 @@ cor.mtest <- function(mat, ...) {
 
 ![Correlogram with significant correlation coefficients at $\alpha$ = 0.01](images/Correl_Significance_1_resized.png)
 
+Illustration of assumption that two variables are jointly normally distributed to perform Steiger's Z test:
+
+
 ```{r}
 
-cov_mat <- cov(numeric_cor_x)
+plot(x$viewsCount, x$Streams)
+plot(log(x$viewsCount, log(x$Streams)))
+
+bivariate_df <- select(x, c('Streams', 'viewsCount'))
+
+# install.packages(“normwhn.test”)
+
+library("normwhn.test")
+normality.test1(bivariate_df)
+
+bivariate_df$Streams <- log(bivariate_df$Streams)
+bivariate_df$viewsCount <- log(bivariate_df$viewsCount)
+
+normality.test1(bivariate_df)
 
 ```
 
