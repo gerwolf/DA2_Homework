@@ -515,4 +515,13 @@ normality.test1(bivariate_df)
 
 ```
 
+```{r}
+
+model <- lm(x$Streams ~ x$viewsCount)
+
+print(model)
+summary(model)
+model$coefficients[2]
+
+```
 
