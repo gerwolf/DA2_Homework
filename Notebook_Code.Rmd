@@ -87,6 +87,8 @@ gplots::heatmap.2(clean_cor, revC=T, na.rm=T)
 
 ```
 
+Steiger's Z test for significance of (Bravais-Pearson) correlation coefficients 
+
 ```{r}
 
 library(corrplot)
@@ -126,4 +128,13 @@ cor.mtest <- function(mat, ...) {
 ```
 
 
-![Correlogram with significant correlation coefficients at $\alpha$ = 0.01](images/Correl_Significance_1.png)
+
+![Correlogram with significant correlation coefficients at $\alpha$ = 0.01](images/Correl_Significance_1_resized.png)
+
+```{r}
+
+cov_mat <- cov(numeric_cor_x)
+
+```
+
+
