@@ -12,6 +12,11 @@ This is the mark-up file for the Datenanalyse 2 homework assignment.
 library("rio")
 x <- import("https://docs.google.com/spreadsheets/d/1SWEakSjZUvvV3w8peOf5FHrGI9NTEDls3c9zETVZ5kQ/export?format=csv&gid=447556196")
 
+str(x)
+
+x$commentCount <- as.integer(x$commentCount)
+x$viewsCount <- as.numeric(x$viewsCount)
+
 ```
 
 
@@ -45,7 +50,8 @@ summary(numeric_x)
 Histograms and kernel density plots of base variables
 
 ```{r}
-par(mfrow=c(4,6))
+
+par(mfrow=c(3,3))
 
 hist(x$Artist_Albums_Number, probability = TRUE, col = "gray")
 lines(density(x$Artist_Albums_Number), col = "red")
@@ -74,6 +80,12 @@ lines(density(x$Artist_Singles_Tracks_Number), col = "red")
 hist(x$Streams, probability = TRUE, col = "gray")
 lines(density(x$Streams), col = "red")
 
+```
+
+```{r}
+
+par(mfrow=c(3,3))
+
 hist(x$Track_Duration_ms, probability = TRUE, col = "gray")
 lines(density(x$Track_Duration_ms), col = "red")
 
@@ -101,11 +113,19 @@ lines(density(x$Artist_Youtube_searches_11m), col = "red")
 hist(x$commentCount, probability = TRUE, col = "gray")
 lines(density(x$commentCount, na.rm = TRUE), col = "red")
 
+```
+
+```{r}
+par(mfrow=c(1,2))
+
 hist(x$dislikeCount, probability = TRUE, col = "gray")
 lines(density(x$dislikeCount), col = "red")
 
 hist(log(x$viewsCount), probability = TRUE, col = "gray")
-lines(density(log(x$viewsCount)), col = "red")
+lines(density(log(x$viewsCount), na.rm = TRUE), col = "red")
+
+#hist(x$viewsCount, probability = TRUE, col = "gray")
+#lines(density(x$viewsCount, na.rm = TRUE), col = "red")
 ```
 
 Distribution test
@@ -127,23 +147,50 @@ ksD <- function (p, x) {
   ks.test(y, "pnorm", mean=mean(y), sd=sd(y))$statistic
 }
 
-for (column in strictly_positive_variables){
+oldw <- getOption("warn")
+options(warn = -1)
+
+min_values <- c()
+
+for (column_index in 1:length(strictly_positive_variables)){
   
-  x_sub <- as.numeric(x[[paste(column)]])
+  column_name <- strictly_positive_variables[column_index]
+  
+  x_sub <- as.numeric(x[[paste(column_name)]])
   
   result <- optimize(ksD, c(-5,5), x=x_sub)
   
-  message(paste(column, ', minimum value is: ', result$minimum))
+  min_values[column_index] <- result$minimum
+  
+  message(paste(column_index, ', minimum value is: ', result$minimum))
   
 }
 
+options(warn = oldw)
 
+```
 
+Box-Cox transformations
 
+```{r}
+column_index <- 5
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+trans <- bcPower(x_sub, min_values[column_index])
 
+hist(trans, col = "gray", probability = TRUE)
+points(seq(min(trans), max(trans), length.out = 500),
+       dnorm(seq(min(trans), max(trans), length.out = 500),
+             mean(trans),sd(trans)), type = "l", col = "red")
 
+test_statistic <- ks.test(trans, "pnorm", mean=mean(trans), sd=sd(trans))$statistic
+critical_value <- 1.3581 / sqrt (length(x_sub))
 
-
+if (test_statistic > critical_value) {
+message(paste("Transformed ", column_name , " is not approximately normally distributed.", test_statistic, critical_value))
+} else {
+message(paste("Transformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+}
 
 ```
 
@@ -155,10 +202,11 @@ Variable transformations
 
 ```{r}
 
+
 numeric_x_scaled <- scale(numeric_x, center = TRUE, scale = TRUE)
 numeric_x_scaled <- as.data.frame(numeric_x_scaled)
 
-par(mfrow=c(4,6))
+par(mfrow=c(3,3))
 
 hist(numeric_x_scaled$Artist_Albums_Number, probability = TRUE, col = "gray")
 lines(density(numeric_x_scaled$Artist_Albums_Number), col = "red")
@@ -187,6 +235,12 @@ lines(density(numeric_x_scaled$Artist_Singles_Tracks_Number), col = "red")
 hist(numeric_x_scaled$Streams, probability = TRUE, col = "gray")
 lines(density(numeric_x_scaled$Streams), col = "red")
 
+```
+
+```{r}
+
+par(mfrow=c(3,3))
+
 hist(numeric_x_scaled$Track_Duration_ms, probability = TRUE, col = "gray")
 lines(density(numeric_x_scaled$Track_Duration_ms), col = "red")
 
@@ -213,15 +267,16 @@ lines(density(numeric_x_scaled$Artist_Youtube_searches_11m), col = "red")
 
 hist(numeric_x_scaled$commentCount, probability = TRUE, col = "gray")
 lines(density(numeric_x_scaled$commentCount, na.rm = TRUE), col = "red")
+```
+
+```{r}
+par(mfrow=c(1,2))
 
 hist(numeric_x_scaled$dislikeCount, probability = TRUE, col = "gray")
 lines(density(numeric_x_scaled$dislikeCount), col = "red")
 
 hist(log(x$viewsCount), probability = TRUE, col = "gray")
 lines(density(log(x$viewsCount)), col = "red")
-
-
-
 
 ```
 
@@ -231,7 +286,8 @@ lines(density(log(x$viewsCount)), col = "red")
 
 log_numeric_x <- log(numeric_x)
 
-par(mfrow=c(4,6))
+
+par(mfrow=c(3,3))
 
 hist(log_numeric_x$Artist_Albums_Number, probability = TRUE, col = "gray")
 lines(density(log_numeric_x$Artist_Albums_Number), col = "red")
@@ -260,6 +316,12 @@ lines(density(log_numeric_x$Artist_Singles_Tracks_Number), col = "red")
 hist(log_numeric_x$Streams, probability = TRUE, col = "gray")
 lines(density(log_numeric_x$Streams), col = "red")
 
+```
+
+```{r}
+
+par(mfrow=c(3,3))
+
 hist(log_numeric_x$Track_Duration_ms, probability = TRUE, col = "gray")
 lines(density(log_numeric_x$Track_Duration_ms), col = "red")
 
@@ -287,12 +349,16 @@ lines(density(log_numeric_x$Artist_Youtube_searches_11m), col = "red")
 hist(log_numeric_x$commentCount, probability = TRUE, col = "gray")
 lines(density(log_numeric_x$commentCount, na.rm = TRUE), col = "red")
 
+```
+
+```{r}
+par(mfrow=c(1,2))
+
 hist(log_numeric_x$dislikeCount, probability = TRUE, col = "gray")
 lines(density(log_numeric_x$dislikeCount), col = "red")
 
 hist(log_numeric_x$viewsCount, probability = TRUE, col = "gray")
 lines(density(log_numeric_x$viewsCount), col = "red")
-
 
 
 ```
@@ -325,13 +391,18 @@ plot(log(x$viewsCount), log(x$Streams), main="Music streams", pch=19, col=col)
 
 library("lattice")
 xyplot(Streams~viewsCount|Genre, data=x, pch=19)
+xyplot(log_numeric_x$Streams~log_numeric_x$viewsCount|x$Genre, pch=19)
 
 ```
 
 ```{r}
 
 library("ggplot2")
-d <-ggplot(x, aes(x=viewsCount, y=Streams, colour=Genre))
+
+d <-ggplot(x, aes(x=as.integer(viewsCount), y=as.integer(Streams), colour=Genre))
+d + geom_point(shape=19)
+
+d <-ggplot(x, aes(x=log(viewsCount), y=log(Streams), colour=Genre))
 d + geom_point(shape=19)
 
 ```
@@ -347,12 +418,19 @@ sunflowerplot(sunflower_streams~sunflower_viewsCount)
 ```
 
 ```{r}
+library("Rmpfr")
+
+# (one <- mpfr(1, 120))
 
 cor <- cor(numeric_x)
 drop.cor_cols <- c('Artist_Compilations_Number', 'Artist_Compilations_Tracks_Number')
 numeric_cor_x <- select(numeric_x, -one_of(drop.cor_cols))
 
-clean_cor <- cor(numeric_cor_x)
+numeric_cor_x$viewsCount <- as.numeric(numeric_cor_x$viewsCount)
+
+str(numeric_cor_x)
+
+clean_cor <- cor(numeric_cor_x[complete.cases(numeric_cor_x), ])
 heatmap(clean_cor, revC=T, col=topo.colors(10))
 
 ```
@@ -392,27 +470,28 @@ cor.mtest <- function(mat, ...) {
   colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
   p.mat
 }
+
 # matrix of the p-value of the correlation
-#p.mat <- cor.mtest(clean_cor)
+p.mat <- cor.mtest(clean_cor)
 
-#col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
-#significance_level <- 0.1
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+significance_level <- 0.05
 
-#corrplot(clean_cor, method="color", col=col(200),  
-#         type="upper", order="hclust", 
-#         addCoef.col = "black", # Add coefficient of correlation
-#         tl.col="black", tl.srt=90, #Text label color and rotation
-#         # Combine with significance
-#         p.mat = p.mat, sig.level = significance_level, insig = "blank", 
-#         # hide correlation coefficient on the principal diagonal
-#         diag=FALSE)
+corrplot(clean_cor, method="color", col=col(200),  
+         type="upper", order="hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt=90, #Text label color and rotation
+         # Combine with significance
+         p.mat = p.mat, sig.level = significance_level, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE)
 
 
 ```
 
 
 
-![Correlogram with significant correlation coefficients at $\alpha$ = 0.01](images/Correl_Significance_1_resized.png)
+![Correlogram with significant correlation coefficients at $\alpha$ = 0.05](images/Correl_Significance_5_resized.png)
 
 Illustration of assumption that two variables are jointly normally distributed to perform Steiger's Z test:
 
@@ -420,11 +499,11 @@ Illustration of assumption that two variables are jointly normally distributed t
 ```{r}
 
 plot(x$viewsCount, x$Streams)
-plot(log(x$viewsCount, log(x$Streams)))
+plot(log(x$viewsCount), log(x$Streams))
 
 bivariate_df <- select(x, c('Streams', 'viewsCount'))
 
-# install.packages(“normwhn.test”)
+# install.packages("normwhn.test"")
 
 library("normwhn.test")
 normality.test1(bivariate_df)
