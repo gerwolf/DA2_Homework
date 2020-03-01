@@ -21,6 +21,15 @@ library("dplyr")
 drop.cols <- c('Artist_ID', 'Genre', 'Release_Date', 'Track_Artist', 'Track_ID', 'Track_Title', 'video_ID')
 numeric_x <- select(x, -one_of(drop.cols))
 
+keep.cols <- c('Streams', 'Artist_Follower', 'Track_Duration_ms', 'Artist_Google_searches_11m', 'Title_Google_searches_11m',
+               'viewsCount')
+
+# keep.cols <- c('Streams', 'viewsCount', 'Title_Youtube_searches_11m')
+
+selected_pairs <- select(x, keep.cols)
+
+pairs(selected_pairs, cex=0.5)
+
 ```
 
 
