@@ -128,7 +128,9 @@ lines(density(log(x$viewsCount), na.rm = TRUE), col = "red")
 #lines(density(x$viewsCount, na.rm = TRUE), col = "red")
 ```
 
-Distribution test
+Distribution testing
+
+1) Normality
 
 ```{r}
 
@@ -139,6 +141,270 @@ strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Artist
 
 summary(select(x, strictly_positive_variables))
 
+
+for (i in 1:length(strictly_positive_variables)){
+  
+  column_name <- strictly_positive_variables[i]
+  
+  sub_df <- numeric_x[column_name]
+  sub_df <- as.numeric(as.character(unlist(sub_df[[1]])))
+  
+  test_statistic <- ks.test(sub_df, "pnorm", mean=mean(sub_df), sd=sd(sub_df))$statistic
+  critical_value <- 1.3581 / sqrt (length(sub_df))
+  
+  if (test_statistic > critical_value) {
+message(paste(" ", column_name , " is not approximately normally distributed.", test_statistic, critical_value))
+} else {
+message(paste(" ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+}}
+
+
+```
+
+None of the strictly positive variables in their base specification passes the KS test.
+
+
+2) Standard normality
+
+```{r}
+
+
+numeric_x_scaled <- scale(numeric_x, center = TRUE, scale = TRUE)
+numeric_x_scaled <- as.data.frame(numeric_x_scaled)
+
+par(mfrow=c(3,3))
+
+hist(numeric_x_scaled$Artist_Albums_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Albums_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Albums_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Albums_Tracks_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Appearances_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Appearances_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Appearances_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Appearances_Tracks_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Follower, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Follower), col = "red")
+
+hist(numeric_x_scaled$Artist_Popularity, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Popularity), col = "red")
+
+hist(numeric_x_scaled$Artist_Singles_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Singles_Number), col = "red")
+
+hist(numeric_x_scaled$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Singles_Tracks_Number), col = "red")
+
+hist(numeric_x_scaled$Streams, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Streams), col = "red")
+
+```
+
+```{r}
+
+par(mfrow=c(3,3))
+
+hist(numeric_x_scaled$Track_Duration_ms, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Track_Duration_ms), col = "red")
+
+hist(numeric_x_scaled$Track_Popularity, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Track_Popularity), col = "red")
+
+hist(numeric_x_scaled$Title_Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Title_Artist_Google_searches_11m), col = "red")
+
+hist(numeric_x_scaled$Title_Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Title_Artist_Youtube_searches_11m), col = "red")
+
+hist(numeric_x_scaled$Title_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Title_Google_searches_11m), col = "red")
+
+hist(numeric_x_scaled$Total_tracks, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Total_tracks), col = "red")
+
+hist(numeric_x_scaled$Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Google_searches_11m), col = "red")
+
+hist(numeric_x_scaled$Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$Artist_Youtube_searches_11m), col = "red")
+
+hist(numeric_x_scaled$commentCount, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$commentCount, na.rm = TRUE), col = "red")
+```
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(numeric_x_scaled$dislikeCount, probability = TRUE, col = "gray")
+lines(density(numeric_x_scaled$dislikeCount), col = "red")
+
+hist(log(x$viewsCount), probability = TRUE, col = "gray")
+lines(density(log(x$viewsCount)), col = "red")
+
+```
+
+```{r}
+
+for (i in 1:length(strictly_positive_variables)){
+  
+  column_name <- strictly_positive_variables[i]
+  
+  sub_df <- numeric_x_scaled[column_name]
+  sub_df <- as.numeric(as.character(unlist(sub_df[[1]])))
+  
+  test_statistic <- ks.test(sub_df, "pnorm", mean=mean(sub_df), sd=sd(sub_df))$statistic
+  critical_value <- 1.3581 / sqrt (length(sub_df))
+  
+  if (test_statistic > critical_value) {
+message(paste(" Z-transformed ", column_name , " is not approximately normally distributed.", test_statistic, critical_value))
+} else {
+message(paste(" Z-transformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+}}
+
+
+
+```
+
+Again, none of the z-transformed variables is approximately normally distributed, however only Track_Duration_ms is close to the critical value at $\alpha$ = 0.05.
+
+3) Log-normality
+
+```{r}
+
+log_numeric_x <- log(numeric_x)
+
+par(mfrow=c(3,3))
+
+hist(log_numeric_x$Artist_Albums_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Albums_Number), col = "red")
+
+hist(log_numeric_x$Artist_Albums_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Albums_Tracks_Number), col = "red")
+
+hist(log_numeric_x$Artist_Appearances_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Appearances_Number), col = "red")
+
+hist(log_numeric_x$Artist_Appearances_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Appearances_Tracks_Number), col = "red")
+
+hist(log_numeric_x$Artist_Follower, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Follower), col = "red")
+
+hist(log_numeric_x$Artist_Popularity, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Popularity), col = "red")
+
+hist(log_numeric_x$Artist_Singles_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Singles_Number), col = "red")
+
+hist(log_numeric_x$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Singles_Tracks_Number), col = "red")
+
+hist(log_numeric_x$Streams, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Streams), col = "red")
+
+```
+
+```{r}
+
+par(mfrow=c(3,3))
+
+hist(log_numeric_x$Track_Duration_ms, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Track_Duration_ms), col = "red")
+
+hist(log_numeric_x$Track_Popularity, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Track_Popularity), col = "red")
+
+hist(log_numeric_x$Title_Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Title_Artist_Google_searches_11m), col = "red")
+
+hist(log_numeric_x$Title_Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Title_Artist_Youtube_searches_11m), col = "red")
+
+hist(log_numeric_x$Title_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Title_Google_searches_11m), col = "red")
+
+hist(log_numeric_x$Total_tracks, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Total_tracks), col = "red")
+
+hist(log_numeric_x$Artist_Google_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Google_searches_11m), col = "red")
+
+hist(log_numeric_x$Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$Artist_Youtube_searches_11m), col = "red")
+
+hist(log_numeric_x$commentCount, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$commentCount, na.rm = TRUE), col = "red")
+
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(log_numeric_x$dislikeCount, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$dislikeCount), col = "red")
+
+hist(log_numeric_x$viewsCount, probability = TRUE, col = "gray")
+lines(density(log_numeric_x$viewsCount), col = "red")
+
+```
+
+
+```{r}
+
+for (i in 1:length(strictly_positive_variables)){
+  
+  column_name <- strictly_positive_variables[i]
+  
+  sub_df <- numeric_x[column_name]
+  sub_df <- sub_df[sub_df > 1]
+  sub_df <- log(sub_df)
+  # sub_df <- as.numeric(as.character(unlist(sub_df[[1]])))
+  
+  test_statistic <- ks.test(sub_df, "pnorm", mean=mean(sub_df), sd=sd(sub_df))$statistic
+  critical_value <- 1.3581 / sqrt (length(sub_df))
+  
+  if (test_statistic > critical_value) {
+message(paste(" Log-transformed ", column_name , " is not approximately normally distributed.", test_statistic, critical_value))
+} else {
+message(paste(" Log-ransformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+}}
+
+
+```
+
+After log-transforming the variables, streams and viewsCount are approximately normally distributed, so we can proceed with testing whether they are also jointly (log-) normally distributed.
+
+$H_0$: two variables are jointly normal distributed 
+$H_1$: two variables are not jointly normal distributed
+
+```{r}
+
+plot(log(x$viewsCount), log(x$Streams))
+
+bivariate_df <- select(log_numeric_x, c('Streams', 'viewsCount'))
+
+# install.packages("MVN")
+
+library("MVN")
+
+mvn(bivariate_df, mvnTest = "mardia")$multivariateNormality # Not jointly normal
+mvn(bivariate_df, mvnTest = "hz")$multivariateNormality # Not jointly normal
+mvn(bivariate_df, mvnTest = "royston")$multivariateNormality # 
+mvn(bivariate_df, mvnTest = "energy")$multivariateNormality
+
+```
+
+Result: all tests reject the Null hypothesis that the two variables log-Streams and log-viewsCount are jointly normally distributed. Hence, Steiger's Z test cannot be meaningfully conducted. All results displayed in the correlogram are thefore to be treated with caution.
+
+
+4) Box-Cox transformations
+
+
+```{r}
 
 library("psych")
 library("car")
@@ -227,17 +493,18 @@ column_name <- strictly_positive_variables[column_index]
 x_sub <- as.numeric(x[[paste(column_name)]])
 Artist_Youtube_searches_11m_trans <- bcPower(x_sub, min_values[column_index])
 
-hist_trans_list <- c('Artist_Follower_trans', 'Artist_Popularity_trans', 'Artist_Singles_Number_trans',
-                     'Artist_Singles_Tracks_Number_trans', 'Streams_trans', 'Track_Duration_ms_trans', 'Total_tracks_trans',
-                     'viewsCount_trans', 'Artist_Google_searches_11m_trans', 'Artist_Youtube_searches_11m_trans')
+hist_trans_list <- list(Artist_Follower_trans, Artist_Popularity_trans, Artist_Singles_Number_trans,
+                     Artist_Singles_Tracks_Number_trans, Streams_trans, Track_Duration_ms_trans, Total_tracks_trans,
+                     viewsCount_trans, Artist_Google_searches_11m_trans, Artist_Youtube_searches_11m_trans)
 
 for (trans_index in 1:length(hist_trans_list)){
   
-  column_name <- hist_trans_list[trans_index]
+  column_name <- strictly_positive_variables[trans_index]
   
   selected_trans <- hist_trans_list[trans_index]
+  selected_trans <- as.numeric(as.character(unlist(selected_trans[[1]])))
   
-  hist(selected_trans, col = "gray", probability = TRUE)
+  hist(selected_trans, col = "gray", probability = TRUE, main = "Histogram of Box-Cox transformed", xlab = column_name)
   points(seq(min(selected_trans), max(selected_trans), length.out = 500),
        dnorm(seq(min(selected_trans), max(selected_trans), length.out = 500),
              mean(selected_trans),sd(selected_trans)), type = "l", col = "red")
@@ -254,187 +521,38 @@ message(paste("Transformed ", column_name , " is approximately normally distribu
 
 
 
-test_statistic <- ks.test(Artist_Follower_trans, "pnorm", mean=mean(Artist_Follower_trans), sd=sd(Artist_Follower_trans))$statistic
-critical_value <- 1.3581 / sqrt (length(x_sub))
+#test_statistic <- ks.test(Artist_Follower_trans, "pnorm", mean=mean(Artist_Follower_trans), sd=sd(Artist_Follower_trans))$statistic
+#critical_value <- 1.3581 / sqrt (length(x_sub))
 
-if (test_statistic > critical_value) {
-message(paste("Transformed ", column_name , " is not approximately normally distributed.", test_statistic, critical_value))
-} else {
-message(paste("Transformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
-}
+#if (test_statistic > critical_value) {
+#message(paste("Transformed ", column_name , " is not approximately normally distributed.", test_statistic, critical_value))
+#} else {
+#message(paste("Transformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+#}
 
 
 
 ```
 
 
+Again, after Box-Cox transforming the variables with $\lambda$ equal to the optimized, minimum value to pass the KS test only viewsCount appears to be approximately normally distributed. Similarly, Streams is close to passing the KS test and therefore I'll also test for joint normality using the optimally Box-Cox-transformed variables.
 
-Variable transformations
-
-1) Z-Transformation
 
 ```{r}
 
+plot(viewsCount_trans, Streams_trans)
 
-numeric_x_scaled <- scale(numeric_x, center = TRUE, scale = TRUE)
-numeric_x_scaled <- as.data.frame(numeric_x_scaled)
+bivariate_df <- data.frame(viewsCount_trans, Streams_trans)
 
-par(mfrow=c(3,3))
-
-hist(numeric_x_scaled$Artist_Albums_Number, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Albums_Number), col = "red")
-
-hist(numeric_x_scaled$Artist_Albums_Tracks_Number, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Albums_Tracks_Number), col = "red")
-
-hist(numeric_x_scaled$Artist_Appearances_Number, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Appearances_Number), col = "red")
-
-hist(numeric_x_scaled$Artist_Appearances_Tracks_Number, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Appearances_Tracks_Number), col = "red")
-
-hist(numeric_x_scaled$Artist_Follower, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Follower), col = "red")
-
-hist(numeric_x_scaled$Artist_Popularity, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Popularity), col = "red")
-
-hist(numeric_x_scaled$Artist_Singles_Number, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Singles_Number), col = "red")
-
-hist(numeric_x_scaled$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Singles_Tracks_Number), col = "red")
-
-hist(numeric_x_scaled$Streams, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Streams), col = "red")
-
-```
-
-```{r}
-
-par(mfrow=c(3,3))
-
-hist(numeric_x_scaled$Track_Duration_ms, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Track_Duration_ms), col = "red")
-
-hist(numeric_x_scaled$Track_Popularity, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Track_Popularity), col = "red")
-
-hist(numeric_x_scaled$Title_Artist_Google_searches_11m, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Title_Artist_Google_searches_11m), col = "red")
-
-hist(numeric_x_scaled$Title_Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Title_Artist_Youtube_searches_11m), col = "red")
-
-hist(numeric_x_scaled$Title_Google_searches_11m, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Title_Google_searches_11m), col = "red")
-
-hist(numeric_x_scaled$Total_tracks, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Total_tracks), col = "red")
-
-hist(numeric_x_scaled$Artist_Google_searches_11m, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Google_searches_11m), col = "red")
-
-hist(numeric_x_scaled$Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Artist_Youtube_searches_11m), col = "red")
-
-hist(numeric_x_scaled$commentCount, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$commentCount, na.rm = TRUE), col = "red")
-```
-
-```{r}
-par(mfrow=c(1,2))
-
-hist(numeric_x_scaled$dislikeCount, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$dislikeCount), col = "red")
-
-hist(log(x$viewsCount), probability = TRUE, col = "gray")
-lines(density(log(x$viewsCount)), col = "red")
-
-```
-
-2) Log-Transformation
-
-```{r}
-
-log_numeric_x <- log(numeric_x)
-
-
-par(mfrow=c(3,3))
-
-hist(log_numeric_x$Artist_Albums_Number, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Albums_Number), col = "red")
-
-hist(log_numeric_x$Artist_Albums_Tracks_Number, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Albums_Tracks_Number), col = "red")
-
-hist(log_numeric_x$Artist_Appearances_Number, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Appearances_Number), col = "red")
-
-hist(log_numeric_x$Artist_Appearances_Tracks_Number, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Appearances_Tracks_Number), col = "red")
-
-hist(log_numeric_x$Artist_Follower, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Follower), col = "red")
-
-hist(log_numeric_x$Artist_Popularity, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Popularity), col = "red")
-
-hist(log_numeric_x$Artist_Singles_Number, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Singles_Number), col = "red")
-
-hist(log_numeric_x$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Singles_Tracks_Number), col = "red")
-
-hist(log_numeric_x$Streams, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Streams), col = "red")
-
-```
-
-```{r}
-
-par(mfrow=c(3,3))
-
-hist(log_numeric_x$Track_Duration_ms, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Track_Duration_ms), col = "red")
-
-hist(log_numeric_x$Track_Popularity, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Track_Popularity), col = "red")
-
-hist(log_numeric_x$Title_Artist_Google_searches_11m, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Title_Artist_Google_searches_11m), col = "red")
-
-hist(log_numeric_x$Title_Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Title_Artist_Youtube_searches_11m), col = "red")
-
-hist(log_numeric_x$Title_Google_searches_11m, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Title_Google_searches_11m), col = "red")
-
-hist(log_numeric_x$Total_tracks, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Total_tracks), col = "red")
-
-hist(log_numeric_x$Artist_Google_searches_11m, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Google_searches_11m), col = "red")
-
-hist(log_numeric_x$Artist_Youtube_searches_11m, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Artist_Youtube_searches_11m), col = "red")
-
-hist(log_numeric_x$commentCount, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$commentCount, na.rm = TRUE), col = "red")
-
-```
-
-```{r}
-par(mfrow=c(1,2))
-
-hist(log_numeric_x$dislikeCount, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$dislikeCount), col = "red")
-
-hist(log_numeric_x$viewsCount, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$viewsCount), col = "red")
+mvn(bivariate_df, mvnTest = "mardia")$multivariateNormality # Not jointly normal
+mvn(bivariate_df, mvnTest = "hz")$multivariateNormality # Not jointly normal
+mvn(bivariate_df, mvnTest = "royston")$multivariateNormality # 
+mvn(bivariate_df, mvnTest = "energy")$multivariateNormality
 
 
 ```
+
+Result: all tests reject the Null hypothesis that the two variables optimal Box-Cox-Streams and optimal Box-Cox-viewsCount are jointly normally distributed. 
 
 
 Table by genre
@@ -521,7 +639,7 @@ gplots::heatmap.2(clean_cor, revC=T, na.rm=T)
 
 ```
 
-Steiger's Z test for significance of (Bravais-Pearson) correlation coefficients 
+Tests for significance of Bravais-Pearson, Spearman and Kendall correlation coefficients 
 
 ```{r}
 
@@ -536,7 +654,7 @@ cor.mtest <- function(mat, ...) {
   diag(p.mat) <- 0
   for (i in 1:(n - 1)) {
     for (j in (i + 1):n) {
-      tmp <- cor.test(mat[, i], mat[, j], ...)
+      tmp <- cor.test(mat[, i], mat[, j], ..., method = "kendall")
       p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
     }
   }
@@ -562,31 +680,142 @@ corrplot(clean_cor, method="color", col=col(200),
 
 ```
 
+```{r}
+
+x$stream_quantile_ind <- 0
+
+stream_quantiles <- quantile(x$Streams, probs = c(0.25, 0.5, 0.75))
+
+streams_q_25 <- stream_quantiles[1]
+streams_median <- stream_quantiles[2]
+streams_q_75 <- stream_quantiles[3]
+
+x$stream_quantile_ind <- ifelse(x$Streams < streams_q_25, 1, x$stream_quantile_ind + 0)
+x$stream_quantile_ind <- ifelse(((x$Streams >= streams_q_25) & (x$Streams < streams_median)), 2, x$stream_quantile_ind + 0)
+x$stream_quantile_ind <- ifelse(((x$Streams >= streams_median) & (x$Streams < streams_q_75)), 3, x$stream_quantile_ind + 0)
+x$stream_quantile_ind <- ifelse((x$Streams >= streams_q_75), 4, x$stream_quantile_ind + 0)
+
+# bottom_25 <- subset(x , Streams < q_25)
+# top_50_75 <- subset(x, Streams >= q_25 & Streams < median)
+# top_25_50 <- subset(x , Streams >= median & Streams < q_75)
+# top_25 <- subset(x, Streams >= q_75)
+
+x$stream_quantile_ind <- as.factor(x$stream_quantile_ind)
+x$Genre <- as.factor(x$Genre)
+
+tab<-table(x$Genre, x$stream_quantile_ind)
+tab
+
+# critical Chi^2 value (df= 27): 40.11
+
+chisq.test(tab)
+chisq.test(tab, simulate.p.value = TRUE)
+
+library("vcd")
+assocstats(tab)
+
+```
+
+The p-value is smaller than the confidence level $\alpha$ = 0.05, hence we reject the Null hypothesis of no independence and conclude that there exists a dependence between the songs' genre and their placement within the four quantile ranges of the distribution of their amount of streams.
+Cramer's V (~0.16) suggests that there is a weak dependence between the ranking of a track and its genre.
+
+
+```{r}
+
+x$viewsCount_quantile_ind <- 0
+
+viewsCount_quantiles <- quantile(x$viewsCount, probs = c(0.25, 0.5, 0.75))
+
+viewsCount_q_25 <- viewsCount_quantiles[1]
+viewsCount_median <- viewsCount_quantiles[2]
+viewsCount_q_75 <- viewsCount_quantiles[3]
+
+x$viewsCount_quantile_ind <- ifelse(x$viewsCount < viewsCount_q_25, 1, x$viewsCount_quantile_ind + 0)
+x$viewsCount_quantile_ind <- ifelse(((x$viewsCount >= viewsCount_q_25) & (x$viewsCount < viewsCount_median)), 2, x$viewsCount_quantile_ind + 0)
+x$viewsCount_quantile_ind <- ifelse(((x$viewsCount >= viewsCount_median) & (x$viewsCount < viewsCount_q_75)), 3, x$viewsCount_quantile_ind + 0)
+x$viewsCount_quantile_ind <- ifelse((x$viewsCount >= viewsCount_q_75), 4, x$viewsCount_quantile_ind + 0)
+
+# bottom_25 <- subset(x , Streams < q_25)
+# top_50_75 <- subset(x, Streams >= q_25 & Streams < median)
+# top_25_50 <- subset(x , Streams >= median & Streams < q_75)
+# top_25 <- subset(x, Streams >= q_75)
+
+x$viewsCount_quantile_ind <- as.factor(x$viewsCount_quantile_ind)
+
+tab<-table(x$Genre, x$viewsCount_quantile_ind)
+tab
+
+# critical Chi^2 value (df= 27): 40.11
+
+chisq.test(tab)
+chisq.test(tab, simulate.p.value = TRUE)
+
+library("vcd")
+assocstats(tab)
+
+```
+
+The p-value is smaller than the confidence level $\alpha$ = 0.05, hence we reject the Null hypothesis of no independence and conclude that there exists a dependence between the songs' genre and their placement within the four quantile ranges of the distribution of their views on Youtube.
+Cramer's V (~0.3) suggests that there is a semi-weak dependence between the ranking of a music video and its genre.
+
+Let's see whether there exists an ordinal relationship between the placement of streams within the distributional range and the placement of the corresponding music video's views: 
+
+```{r}
+
+ab2 <- na.omit(cbind(x$stream_quantile_ind, x$viewsCount_quantile_ind))
+nrow(ab2)*(nrow(ab2)-1)/2
+#
+ind <- order(ab2[,1], ab2[,2])
+ab2 <- ab2[ind,]
+#b
+C <- D <- Tx <- Ty <- Txy <- 0
+for (i in 1:(nrow(ab2)-1)) {
+  if (i%%100==0) cat(i, "\n")
+  for(j in (i+1):nrow(ab2)) {
+    if (ab2[i,1]==ab2[j,1]) {
+      if (ab2[i,2]==ab2[j,2]) {
+        Txy <- Txy+1
+      } else {
+        Tx <- Tx+(ab2[i,2]<ab2[j,2])
+      }
+    } else {   
+      if (ab2[i,2]==ab2[j,2]) Ty <- Ty+1
+      if (ab2[i,2]<ab2[j,2]) C <- C+1
+      if (ab2[i,2]>ab2[j,2]) D <- D+1
+    }
+  }
+}
+
+c(C=C, D=D, Tx=Tx, Ty=Ty, Txy=Txy)
+
+k_t <- (C - D)/(nrow(ab2)*(nrow(ab2)-1)/2)
+k_t # (without ties)
+
+library("ryouready")
+ord.tau(table(ab2[,1], ab2[,2]))
+
+cor(as.numeric(x$stream_quantile_ind), as.numeric(x$viewsCount_quantile_ind), method = "kendall")
+
+cor.test(as.numeric(x$stream_quantile_ind), as.numeric(x$viewsCount_quantile_ind), method="kendall")
+
+tab<-table(x$stream_quantile_ind, x$viewsCount_quantile_ind)
+chisq.test(tab)
+chisq.test(tab, simulate.p.value = TRUE)
+
+library("vcd")
+assocstats(tab)
+
+```
+
+The rank correlation coefficient by Kendall's Tau (here for a quadratic table) is around 0.41 and the test yields that this coefficient is significant, hence we can conclude that there exists a positive relationship between the placement of streams of a song on Spotify and the placement of views of the corresponding music video on Youtube, meaning a higher rank of the song's music video in Youtube views is associated with a higher rank inside of Spotify's streams.
+
+Even if not appropriate since the two variables have an ordinal scale and using $\chi^2$ test for independence would neglect additional information, Cramer's V (~0.33) states there exists are semi-weak relationship but without inferring anything about the direction of the relationship, only the strength of this relationship. Therefore, Kendall's Tau gives us the "correct" estimate, indicating the positive relationship between the two ordinal variables.
 
 
 ![Correlogram with significant correlation coefficients at $\alpha$ = 0.05](images/Correl_Significance_5_resized.png)
 
 Illustration of assumption that two variables are jointly normally distributed to perform Steiger's Z test:
 
-
-```{r}
-
-plot(x$viewsCount, x$Streams)
-plot(log(x$viewsCount), log(x$Streams))
-
-bivariate_df <- select(x, c('Streams', 'viewsCount'))
-
-# install.packages("normwhn.test"")
-
-library("normwhn.test")
-normality.test1(bivariate_df)
-
-bivariate_df$Streams <- log(bivariate_df$Streams)
-bivariate_df$viewsCount <- log(bivariate_df$viewsCount)
-
-normality.test1(bivariate_df)
-
-```
 
 ```{r}
 
