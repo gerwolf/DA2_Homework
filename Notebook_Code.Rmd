@@ -132,8 +132,9 @@ Distribution test
 
 ```{r}
 
-strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Streams', 'Track_Duration_ms',
-                                 'viewsCount', 'Artist_Google_searches_11m')
+strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Artist_Singles_Number', 
+                                 'Artist_Singles_Tracks_Number' , 'Streams', 'Track_Duration_ms', 'Total_tracks',
+                                 'viewsCount', 'Artist_Google_searches_11m', 'Artist_Youtube_searches_11m')
 
 
 summary(select(x, strictly_positive_variables))
@@ -173,17 +174,87 @@ options(warn = oldw)
 Box-Cox transformations
 
 ```{r}
+
+par(mfrow=c(2,5))
+
+column_index <- 1
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+Artist_Follower_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 2
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+Artist_Popularity_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 3
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+Artist_Singles_Number_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 4
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+Artist_Singles_Tracks_Number_trans <- bcPower(x_sub, min_values[column_index])
+
 column_index <- 5
 column_name <- strictly_positive_variables[column_index]
 x_sub <- as.numeric(x[[paste(column_name)]])
-trans <- bcPower(x_sub, min_values[column_index])
+Streams_trans <- bcPower(x_sub, min_values[column_index])
 
-hist(trans, col = "gray", probability = TRUE)
-points(seq(min(trans), max(trans), length.out = 500),
-       dnorm(seq(min(trans), max(trans), length.out = 500),
-             mean(trans),sd(trans)), type = "l", col = "red")
+column_index <- 6
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+Track_Duration_ms_trans <- bcPower(x_sub, min_values[column_index])
 
-test_statistic <- ks.test(trans, "pnorm", mean=mean(trans), sd=sd(trans))$statistic
+column_index <- 7
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+Total_tracks_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 8
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+viewsCount_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 9
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+Artist_Google_searches_11m_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 10
+column_name <- strictly_positive_variables[column_index]
+x_sub <- as.numeric(x[[paste(column_name)]])
+Artist_Youtube_searches_11m_trans <- bcPower(x_sub, min_values[column_index])
+
+hist_trans_list <- c('Artist_Follower_trans', 'Artist_Popularity_trans', 'Artist_Singles_Number_trans',
+                     'Artist_Singles_Tracks_Number_trans', 'Streams_trans', 'Track_Duration_ms_trans', 'Total_tracks_trans',
+                     'viewsCount_trans', 'Artist_Google_searches_11m_trans', 'Artist_Youtube_searches_11m_trans')
+
+for (trans_index in 1:length(hist_trans_list)){
+  
+  column_name <- hist_trans_list[trans_index]
+  
+  selected_trans <- hist_trans_list[trans_index]
+  
+  hist(selected_trans, col = "gray", probability = TRUE)
+  points(seq(min(selected_trans), max(selected_trans), length.out = 500),
+       dnorm(seq(min(selected_trans), max(selected_trans), length.out = 500),
+             mean(selected_trans),sd(selected_trans)), type = "l", col = "red")
+  
+  test_statistic <- ks.test(selected_trans, "pnorm", mean=mean(selected_trans), sd=sd(selected_trans))$statistic
+  critical_value <- 1.3581 / sqrt (length(selected_trans))
+  
+  if (test_statistic > critical_value) {
+message(paste("Transformed ", column_name , " is not approximately normally distributed.", test_statistic, critical_value))
+} else {
+message(paste("Transformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+}}
+
+
+
+
+test_statistic <- ks.test(Artist_Follower_trans, "pnorm", mean=mean(Artist_Follower_trans), sd=sd(Artist_Follower_trans))$statistic
 critical_value <- 1.3581 / sqrt (length(x_sub))
 
 if (test_statistic > critical_value) {
@@ -191,6 +262,8 @@ message(paste("Transformed ", column_name , " is not approximately normally dist
 } else {
 message(paste("Transformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
 }
+
+
 
 ```
 
@@ -517,11 +590,17 @@ normality.test1(bivariate_df)
 
 ```{r}
 
-model <- lm(x$Streams ~ x$viewsCount)
+model <- lm(Streams ~ ., data = numeric_x)
 
 print(model)
 summary(model)
-model$coefficients[2]
+
+for (coef_index in 1:length(model$coefficients)){
+  
+  message(paste(names(model$coefficients)[coef_index] ,': ' ,model$coefficients[coef_index]))
+  
+  
+}
 
 ```
 
