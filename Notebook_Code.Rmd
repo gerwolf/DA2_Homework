@@ -719,6 +719,44 @@ assocstats(tab)
 The p-value is smaller than the confidence level $\alpha$ = 0.05, hence we reject the Null hypothesis of no independence and conclude that there exists a dependence between the songs' genre and their placement within the four quantile ranges of the distribution of their views on Youtube.
 Cramer's V (~0.3) suggests that there is a semi-weak dependence between the ranking of a music video and its genre.
 
+
+```{r}
+
+x$Follower_median_ind <- 0
+
+Follower_median <- median(x$Artist_Follower)
+
+x$Follower_median_ind <- ifelse(x$Artist_Follower < Follower_median, 0, 1)
+x$Follower_median_ind <- as.factor(x$Follower_median_ind)
+
+tab<-table(x$Genre, x$Follower_median_ind)
+tab
+
+# critical Chi^2 value (df= 27): 40.11
+
+chisq.test(tab)
+chisq.test(tab, simulate.p.value = TRUE)
+assocstats(tab)
+
+# kendall's tau for stream quantile and follower median
+
+ab2 <- na.omit(cbind(x$stream_quantile_ind, x$Follower_median_ind))
+
+library("ryouready")
+ord.tau(table(ab2[,1], ab2[,2]))
+
+cor(as.numeric(x$stream_quantile_ind), as.numeric(x$Follower_median_ind), method = "kendall") # identical result
+
+cor.test(as.numeric(x$stream_quantile_ind), as.numeric(x$Follower_median_ind), method="kendall")
+
+
+
+```
+
+The relationship between genre and whether the track's artist's follower count is smaller than the median value (=0) or not (=1) appears to be significant and semi-weak, as suggested by the $\chi^2$-Test and Cramer's V.
+
+The relationship between stream quantiles and the follower > median indicator variable appears to be negative (about -0.09) and is significant at the $\alpha$ = 0.01 level. 
+
 Let's see whether there exists an ordinal relationship between the placement of streams within the distributional range and the placement of the corresponding music video's views: 
 
 ```{r}
@@ -755,7 +793,7 @@ k_t # (without ties)
 library("ryouready")
 ord.tau(table(ab2[,1], ab2[,2]))
 
-cor(as.numeric(x$stream_quantile_ind), as.numeric(x$viewsCount_quantile_ind), method = "kendall")
+cor(as.numeric(x$stream_quantile_ind), as.numeric(x$viewsCount_quantile_ind), method = "kendall") # identical result
 
 cor.test(as.numeric(x$stream_quantile_ind), as.numeric(x$viewsCount_quantile_ind), method="kendall")
 
@@ -770,12 +808,13 @@ assocstats(tab)
 
 The rank correlation coefficient by Kendall's Tau (here for a quadratic table) is around 0.41 and the test yields that this coefficient is significant, hence we can conclude that there exists a positive relationship between the placement of streams of a song on Spotify and the placement of views of the corresponding music video on Youtube, meaning a higher rank of the song's music video in Youtube views is associated with a higher rank inside of Spotify's streams.
 
-Even if not appropriate since the two variables have an ordinal scale and using $\chi^2$ test for independence would neglect additional information, Cramer's V (~0.33) states there exists are semi-weak relationship but without inferring anything about the direction of the relationship, only the strength of this relationship. Therefore, Kendall's Tau gives us the "correct" estimate, indicating the positive relationship between the two ordinal variables.
+Even if not appropriate since the two variables have an ordinal scale and using $\chi^2$ test for independence would neglect additional information, Cramer's V (~0.33) states there exists a semi-weak relationship but without inferring anything about the direction of the relationship, only the strength of this relationship. Therefore, Kendall's Tau gives us the "correct" estimate, indicating the positive relationship between the two ordinal variables.
 
 ```{r}
 
 numeric_cor_x$stream_quantile_ind <- as.numeric(x$stream_quantile_ind)
 numeric_cor_x$viewsCount_quantile_ind <- as.numeric(x$viewsCount_quantile_ind)
+numeric_cor_x$Follower_median_ind <- as.numeric(x$Follower_median_ind)
 
 clean_cor <- cor(numeric_cor_x[complete.cases(numeric_cor_x), ])
 
@@ -902,15 +941,112 @@ nom.lambda(tab2)
 
 ```
 
-For genre and stream quantile association the improvement of using this association rather than the single mode as best predictor for stream quantile is moderate, compared to the improvement in accuracy from predicting stream quantiles with video view quantiles. 
+For genre and stream quantile association the improvement of using this association rather than the single mode as best predictor for stream quantile is moderate, compared to the improvement in accuracy from predicting stream quantiles with video view quantiles.
 
 
 
+1) predicting stream quantile without any knowledge about association with follower > median indicator, just taking the mode as predictor
+
+2) predicting stream quantile with knowledge about follower indicator
+
+```{r}
+
+tab2 <- table(numeric_cor_x$stream_quantile_ind, 
+              x$Follower_median_ind, dnn = c("Song streams", "Follower indicator"))
+
+tab2
+
+tab <- rowSums(tab2)
+
+message(paste("The mode is equal across all four quantiles of stream distribution, which is", modetab(tab)))
 
 
+e1_streams <- sum(tab) - modetab(tab)
+
+message(paste("Without any knowledge about an additional feature other than music streams itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab), "%."))
+
+e2_streams <- sum(tab2) - sum(modetab(tab2, 2))
+
+message(paste("Now having knowledge about an association between track streams and its artist's followers and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab), "%, which is insignificantly lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2), "% would have been predicted correctly (compared to ", 1-e1_streams/sum(tab), "% if there was no knowledge about follower.)"))
+
+message("For example, the best prediction for a song of which artist's follower count is above the median would be that it resides inside of the 1st quantile of streams as the mode of 106 was found to be from this class. Hence, using the class mode of artists' followers above median to predict 1st quantile streams would yield 106 correct cases but 381-106 = 275 misclassified predictions.")
+
+lambda <- (e1_streams - e2_streams)/e1_streams
+
+message(paste("Therefore, Goodmann and Kruskals Lambda is: ", lambda))
+
+library("ryouready")
+
+nom.lambda(tab2)
+
+```
 
 
+Analysis of variance
 
+```{r}
+
+table(x$Genre)
+
+wilcox.test(x$Streams[x$Genre == 'Hip Hop'], x$Streams[x$Genre == 'pop'])
+t.test(x$Streams[x$Genre == 'Hip Hop'], x$Streams[x$Genre == 'pop'])
+
+wilcox.test(x$Streams[x$Genre == 'Hip Hop'], x$Streams[x$Genre == 'rap'])
+t.test(x$Streams[x$Genre == 'Hip Hop'], x$Streams[x$Genre == 'rap'])
+
+fit <- aov(Streams~Genre , data =x)
+summary(fit)
+
+
+```
+
+Additional plots
+
+```{r}
+plot(table(x$Genre, x$stream_quantile_ind))
+
+plot(table(x$stream_quantile_ind, x$viewsCount_quantile_ind, x$Follower_median_ind))
+
+require("MASS")
+require("dplyr")
+
+exclude.cols <- c('stream_quantile_ind', 'viewsCount_quantile_ind', 'Follower_median_ind')
+
+no_nas <- numeric_cor_x[complete.cases(numeric_cor_x), ]
+
+clean_coord <- dplyr::select(no_nas, -one_of(exclude.cols))
+
+parcoord(clean_coord, var.label = TRUE)
+
+library("lattice")
+parallelplot(clean_coord, horizontal.axis=T)
+
+library("ggplot2")
+library("GGally")
+ggparcoord(clean_coord) + geom_line()
+
+library("andrews")
+andrews(clean_coord, ymax=4)
+
+x_clean <- x[complete.cases(x), ]
+
+col_genre <- ifelse(x_clean$Genre == 'Hip Hop', "black", "red")
+
+
+keep.cols <- c('Streams', 'Artist_Follower', 'viewsCount')
+
+col_df <- dplyr::select(x_clean, keep.cols)
+log_col_df <- log(col_df)
+
+pairs(log_col_df, cex=0.5, col=col_genre)
+
+parcoord(clean_coord, col=col)
+
+ax <- clean_coord
+ax$clr <- as.numeric(ifelse(col_genre == 'black', 1, 0))
+andrews(ax, ymax=4, clr=23)
+
+```
 
 
 
