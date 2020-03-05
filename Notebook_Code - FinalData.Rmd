@@ -45,17 +45,21 @@ x$speechiness <- min_max_normalize(x$speechiness)
 x$tempo <- min_max_normalize(x$tempo)
 x$valence <- min_max_normalize(x$valence)
 
+x$Genre <- as.factor(x$Genre)
+x$key <- as.factor(x$key)
+x$mode <- as.factor(x$mode)
+x$Charts <- as.factor(x$Charts)
+
 ```
 
 
 ```{r}
 library("dplyr")
 
-drop.cols <- c('Artist_ID', 'Genre', 'Release_Date', 'Track_Artist', 'Track_ID', 'Track_Title', 'video_ID', 'key', 'time_signature')
+drop.cols <- c('Artist_ID', 'Genre', 'Release_Date', 'Track_Artist', 'Track_ID', 'Track_Title', 'video_ID', 'key', 'time_signature', 'Streams', 'Charts', 'mode', 'key')
 numeric_x <- select(x, -one_of(drop.cols))
 
-keep.cols <- c('Streams', 'Artist_Follower', 'Track_Duration_ms',
-               'viewsCount')
+keep.cols <- c('Artist_Follower', 'Track_Duration_ms', 'viewsCount', 'Track_Popularity', 'Artist_Popularity', 'danceability')
 
 # keep.cols <- c('Streams', 'viewsCount', 'Title_Youtube_searches_11m')
 
@@ -63,12 +67,19 @@ selected_pairs <- select(x, keep.cols)
 
 pairs(selected_pairs, cex=0.5)
 
+no_streams_nonan <- select(x, -one_of('Streams'))
+no_streams_nonan <- no_streams_nonan[complete.cases(no_streams_nonan), ]
+
+
 ```
 
 
 Descriptive statistics
 
 ```{r}
+
+numeric_x <- numeric_x[complete.cases(numeric_x), ]
+
 
 summary(numeric_x)
 
@@ -196,7 +207,7 @@ Distribution testing
 
 ```{r}
 
-strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Streams', 'Track_Duration_ms', 'viewsCount', 'acousticness', 'danceability', 'energy', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
+strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Track_Duration_ms', 'Track_Popularity', 'viewsCount', 'acousticness', 'danceability', 'energy', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
 
 
 summary(select(x, strictly_positive_variables))
@@ -263,8 +274,8 @@ lines(density(numeric_x_scaled$Artist_Singles_Number), col = "red")
 hist(numeric_x_scaled$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
 lines(density(numeric_x_scaled$Artist_Singles_Tracks_Number), col = "red")
 
-hist(numeric_x_scaled$Streams, probability = TRUE, col = "gray")
-lines(density(numeric_x_scaled$Streams, na.rm = TRUE), col = "red")
+# hist(numeric_x_scaled$Streams, probability = TRUE, col = "gray")
+# lines(density(numeric_x_scaled$Streams, na.rm = TRUE), col = "red")
 
 ```
 
@@ -369,8 +380,8 @@ lines(density(log_numeric_x$Artist_Singles_Number), col = "red")
 hist(log_numeric_x$Artist_Singles_Tracks_Number, probability = TRUE, col = "gray")
 lines(density(log_numeric_x$Artist_Singles_Tracks_Number), col = "red")
 
-hist(log_numeric_x$Streams, probability = TRUE, col = "gray")
-lines(density(log_numeric_x$Streams, na.rm = TRUE), col = "red")
+#hist(log_numeric_x$Streams, probability = TRUE, col = "gray")
+#lines(density(log_numeric_x$Streams, na.rm = TRUE), col = "red")
 
 ```
 
@@ -451,18 +462,22 @@ $H_1$: two variables are not jointly normal distributed
 
 ```{r}
 
-plot(log(x$viewsCount), log(x$Streams))
+bivariate_df1 <- select(x, c('Streams', 'viewsCount'))
 
-bivariate_df <- select(log_numeric_x, c('Streams', 'viewsCount'))
+bivariate_df1 <- bivariate_df1[complete.cases(bivariate_df1), ]
+
+bivariate_df1 <- log(bivariate_df1)
+
+plot(bivariate_df1$viewsCount, bivariate_df1$Streams)
 
 # install.packages("MVN")
 
 library("MVN")
 
-mvn(bivariate_df, mvnTest = "mardia")$multivariateNormality # Not jointly normal
-mvn(bivariate_df, mvnTest = "hz")$multivariateNormality # Not jointly normal
-mvn(bivariate_df, mvnTest = "royston")$multivariateNormality # 
-mvn(bivariate_df, mvnTest = "energy")$multivariateNormality
+mvn(bivariate_df1, mvnTest = "mardia")$multivariateNormality # Not jointly normal
+mvn(bivariate_df1, mvnTest = "hz")$multivariateNormality # Not jointly normal
+mvn(bivariate_df1, mvnTest = "royston")$multivariateNormality # 
+mvn(bivariate_df1, mvnTest = "energy")$multivariateNormality
 
 ```
 
@@ -491,9 +506,11 @@ for (column_index in 1:length(strictly_positive_variables)){
   
   column_name <- strictly_positive_variables[column_index]
   
-  x_sub <- as.numeric(x[[paste(column_name)]])
+  # x_sub <- as.numeric(x[[paste(column_name)]])
   
-  x_sub <- x_sub[complete.cases(x_sub)]
+  x_sub <- numeric_x[[paste(column_name)]]
+  
+  # x_sub <- x_sub[complete.cases(x_sub)]
   
   result <- optimize(ksD, c(-5,5), x=x_sub)
   
@@ -502,6 +519,12 @@ for (column_index in 1:length(strictly_positive_variables)){
   message(paste(column_index, ', minimum value is: ', result$minimum))
   
 }
+
+
+min_stream_val <- optimize(ksD, c(-5,5), x=bivariate_df1$Streams)$minimum
+min_viewsCount_val <- optimize(ksD, c(-5,5), x=bivariate_df1$viewsCount)$minimum
+
+
 
 options(warn = oldw)
 
@@ -515,14 +538,16 @@ par(mfrow=c(2,5))
 
 column_index <- 1
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 Artist_Follower_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 2
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 Artist_Popularity_trans <- bcPower(x_sub, min_values[column_index])
 
 #column_index <- 3
@@ -535,16 +560,18 @@ Artist_Popularity_trans <- bcPower(x_sub, min_values[column_index])
 #x_sub <- as.numeric(x[[paste(column_name)]])
 #Artist_Singles_Tracks_Number_trans <- bcPower(x_sub, min_values[column_index])
 
+#column_index <- 3
+#column_name <- strictly_positive_variables[column_index]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- numeric_x[[paste(column_name)]]
+#Streams_trans <- bcPower(x_sub, min_values[column_index])
+
 column_index <- 3
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
-Streams_trans <- bcPower(x_sub, min_values[column_index])
-
-column_index <- 4
-column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 Track_Duration_ms_trans <- bcPower(x_sub, min_values[column_index])
 
 #column_index <- 7
@@ -552,10 +579,19 @@ Track_Duration_ms_trans <- bcPower(x_sub, min_values[column_index])
 #x_sub <- as.numeric(x[[paste(column_name)]])
 #Total_tracks_trans <- bcPower(x_sub, min_values[column_index])
 
+column_index <- 4
+column_name <- strictly_positive_variables[column_index]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
+Track_Popularity_trans <- bcPower(x_sub, min_values[column_index])
+
+
 column_index <- 5
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 viewsCount_trans <- bcPower(x_sub, min_values[column_index])
 
 #column_index <- 9
@@ -570,53 +606,64 @@ viewsCount_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 6
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 acousticness_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 7
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 danceability_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 8
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 energy_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 9
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 liveness_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 10
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 loudness_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 11
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 speechiness_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 12
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 tempo_trans <- bcPower(x_sub, min_values[column_index])
 
 column_index <- 13
 column_name <- strictly_positive_variables[column_index]
-x_sub <- as.numeric(x[[paste(column_name)]])
-x_sub <- x_sub[complete.cases(x_sub)]
+#x_sub <- as.numeric(x[[paste(column_name)]])
+#x_sub <- x_sub[complete.cases(x_sub)]
+x_sub <- numeric_x[[paste(column_name)]]
 valence_trans <- bcPower(x_sub, min_values[column_index])
 
-hist_trans_list <- list(Artist_Follower_trans, Artist_Popularity_trans, Streams_trans, Track_Duration_ms_trans,
+streams_trans_sub <- bcPower(bivariate_df1$Streams, min_stream_val)
+viewsCount_trans_sub <- bcPower(bivariate_df1$viewsCount, min_viewsCount_val)
+
+hist_trans_list <- list(Artist_Follower_trans, Artist_Popularity_trans, Track_Duration_ms_trans, Track_Popularity_trans,
                      viewsCount_trans, acousticness_trans, danceability_trans, energy_trans, liveness_trans, 
                      loudness_trans, speechiness_trans, tempo_trans, valence_trans)
 
@@ -643,6 +690,37 @@ message(paste("Transformed ", column_name , " is not approximately normally dist
 message(paste("Transformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
 }}
 
+hist(streams_trans_sub, col = "gray", probability = TRUE, main = "Histogram of Box-Cox transformed", xlab = 'Streams sub')
+points(seq(min(streams_trans_sub), max(streams_trans_sub), length.out = 500),
+       dnorm(seq(min(streams_trans_sub), max(streams_trans_sub), length.out = 500),
+             mean(streams_trans_sub),sd(streams_trans_sub)), type = "l", col = "red")
+
+test_statistic <- ks.test(streams_trans_sub, "pnorm", mean=mean(streams_trans_sub), sd=sd(streams_trans_sub))$statistic
+critical_value <- 1.3581 / sqrt (length(streams_trans_sub))
+  
+  if (test_statistic > critical_value) {
+message(paste("Transformed Streams_sub is not approximately normally distributed.", test_statistic, critical_value))
+} else {
+message(paste("Transformed Streams_sub is approximately normally distributed!", test_statistic, critical_value))  
+}
+
+
+hist(viewsCount_trans_sub, col = "gray", probability = TRUE, main = "Histogram of Box-Cox transformed", xlab = 'viewsCount sub')
+points(seq(min(viewsCount_trans_sub), max(viewsCount_trans_sub), length.out = 500),
+       dnorm(seq(min(viewsCount_trans_sub), max(viewsCount_trans_sub), length.out = 500),
+             mean(viewsCount_trans_sub),sd(viewsCount_trans_sub)), type = "l", col = "red")
+
+test_statistic <- ks.test(viewsCount_trans_sub, "pnorm", mean=mean(viewsCount_trans_sub), sd=sd(viewsCount_trans_sub))$statistic
+critical_value <- 1.3581 / sqrt (length(viewsCount_trans_sub))
+  
+  if (test_statistic > critical_value) {
+message(paste("Transformed viewsCount_sub is not approximately normally distributed.", test_statistic, critical_value))
+} else {
+message(paste("Transformed viewsCount_sub is approximately normally distributed!", test_statistic, critical_value))  
+}
+
+
+
 
 
 
@@ -665,14 +743,14 @@ Again, after Box-Cox transforming the variables with $\lambda$ equal to the opti
 
 ```{r}
 
-plot(viewsCount_trans, Streams_trans)
+plot(viewsCount_trans_sub, streams_trans_sub)
 
-bivariate_df <- data.frame(viewsCount_trans, Streams_trans)
+bivariate_df2 <- data.frame(viewsCount_trans_sub, streams_trans_sub)
 
-mvn(bivariate_df, mvnTest = "mardia")$multivariateNormality # Not jointly normal
-mvn(bivariate_df, mvnTest = "hz")$multivariateNormality # Not jointly normal
-mvn(bivariate_df, mvnTest = "royston")$multivariateNormality # 
-mvn(bivariate_df, mvnTest = "energy")$multivariateNormality
+mvn(bivariate_df2, mvnTest = "mardia")$multivariateNormality # Not jointly normal
+mvn(bivariate_df2, mvnTest = "hz")$multivariateNormality # Not jointly normal
+mvn(bivariate_df2, mvnTest = "royston")$multivariateNormality # 
+mvn(bivariate_df2, mvnTest = "energy")$multivariateNormality
 
 
 ```
@@ -684,7 +762,7 @@ Table by genre
 
 ```{r}
 
-table(x$Genre)
+table(no_streams_nonan$Genre)
 
 ```
 
@@ -694,11 +772,11 @@ table(x$Genre)
 
 ##1
 
-col <- ifelse(x$Genre == "Techno", "black", "red")
+col <- ifelse(no_streams_nonan$Genre == "Techno", "black", "red")
 
-plot(x$viewsCount, x$Track_Popularity, main="Track Popularity", pch=19, col=col)
+plot(no_streams_nonan$Artist_Popularity, no_streams_nonan$Track_Popularity, main="Track Popularity", pch=19, col=col)
 
-plot(log(x$viewsCount), log(x$Track_Popularity), main="Track Popularity", pch=19, col=col)
+plot(log(no_streams_nonan$Artist_Popularity), log(no_streams_nonan$Track_Popularity), main="Track Popularity", pch=19, col=col)
 
 
 ```
@@ -706,8 +784,8 @@ plot(log(x$viewsCount), log(x$Track_Popularity), main="Track Popularity", pch=19
 ```{r}
 
 library("lattice")
-xyplot(Track_Popularity~viewsCount|Genre, data=x, pch=19)
-xyplot(log_numeric_x$Track_Popularity~log_numeric_x$viewsCount|x$Genre, pch=19)
+xyplot(Track_Popularity~Artist_Popularity|Genre, data=no_streams_nonan, pch=19)
+# xyplot(log(no_streams_nonan$Track_Popularity)~log(no_streams_nonan$Artist_Popularity)|x$Genre, pch=19)
 
 ```
 
@@ -715,11 +793,11 @@ xyplot(log_numeric_x$Track_Popularity~log_numeric_x$viewsCount|x$Genre, pch=19)
 
 library("ggplot2")
 
-d <-ggplot(x, aes(x=as.integer(viewsCount), y=as.integer(Track_Popularity), colour=Genre))
+d <-ggplot(no_streams_nonan, aes(x=as.integer(Artist_Popularity), y=as.integer(Track_Popularity), colour=Genre))
 d + geom_point(shape=19)
 
-d <-ggplot(x, aes(x=log(viewsCount), y=log(Track_Popularity), colour=Genre))
-d + geom_point(shape=19)
+# d <-ggplot(x, aes(x=log(viewsCount), y=log(Track_Popularity), colour=Genre))
+# d + geom_point(shape=19)
 
 ```
 
@@ -727,9 +805,9 @@ Using sunflower plot to overcome problem of overplotting.
 
 ```{r}
 
-sunflower_viewsCount <- 2*round(x$viewsCount/2)
-sunflower_streams  <- 2*round(x$Track_Popularity/2)
-sunflowerplot(sunflower_streams~sunflower_viewsCount)
+sunflower_Artist_pop <- 2*round(no_streams_nonan$Artist_Popularity/2)
+sunflower_Track_pop  <- 2*round(no_streams_nonan$Track_Popularity/2)
+sunflowerplot(sunflower_Track_pop~sunflower_Artist_pop)
 
 ```
 
@@ -768,6 +846,8 @@ Tests for significance of Bravais-Pearson, Spearman and Kendall correlation coef
 
 ```{r}
 
+x <- no_streams_nonan
+
 x$stream_quantile_ind <- 0
 
 stream_quantiles <- quantile(x$Track_Popularity, probs = c(0.25, 0.5, 0.75))
@@ -802,8 +882,8 @@ assocstats(tab)
 
 ```
 
-The p-value is smaller than the confidence level $\alpha$ = 0.05, hence we reject the Null hypothesis of no independence and conclude that there exists a dependence between the songs' genre and their placement within the four quantile ranges of the distribution of their amount of streams.
-Cramer's V (~0.16) suggests that there is a weak dependence between the ranking of a track and its genre.
+The p-value is smaller than the confidence level $\alpha$ = 0.05, hence we reject the Null hypothesis of no independence and conclude that there exists a dependence between the songs' genre and their placement within the four quantile ranges of the distribution of their popularity.
+Cramer's V (~0.33) suggests that there is a semi-weak dependence between the ranking of a track and its genre.
 
 
 ```{r}
@@ -842,7 +922,7 @@ assocstats(tab)
 ```
 
 The p-value is smaller than the confidence level $\alpha$ = 0.05, hence we reject the Null hypothesis of no independence and conclude that there exists a dependence between the songs' genre and their placement within the four quantile ranges of the distribution of their views on Youtube.
-Cramer's V (~0.3) suggests that there is a semi-weak dependence between the ranking of a music video and its genre.
+Cramer's V (~0.46) suggests that there is a semi-strong dependence between the ranking of a music video and its genre.
 
 
 ```{r}
@@ -878,11 +958,11 @@ cor.test(as.numeric(x$stream_quantile_ind), as.numeric(x$Follower_median_ind), m
 
 ```
 
-The relationship between genre and whether the track's artist's follower count is smaller than the median value (=0) or not (=1) appears to be significant and semi-weak, as suggested by the $\chi^2$-Test and Cramer's V.
+The relationship between genre and whether the track's artist's follower count is smaller than the median value (=0) or not (=1) appears to be significant and strong, as suggested by the $\chi^2$-Test and Cramer's V (~0.6).
 
-The relationship between stream quantiles and the follower > median indicator variable appears to be negative (about -0.09) and is significant at the $\alpha$ = 0.01 level. 
+The relationship between stream quantiles and the follower > median indicator variable appears to be positive (about 0.25) and is significant at the $\alpha$ = 0.01 level. 
 
-Let's see whether there exists an ordinal relationship between the placement of streams within the distributional range and the placement of the corresponding music video's views: 
+Let's see whether there exists an ordinal relationship between the placement of track popularity within the distributional range and the placement of the corresponding music video's views: 
 
 ```{r}
 
@@ -931,9 +1011,9 @@ assocstats(tab)
 
 ```
 
-The rank correlation coefficient by Kendall's Tau (here for a quadratic table) is around 0.41 and the test yields that this coefficient is significant, hence we can conclude that there exists a positive relationship between the placement of streams of a song on Spotify and the placement of views of the corresponding music video on Youtube, meaning a higher rank of the song's music video in Youtube views is associated with a higher rank inside of Spotify's streams.
+The rank correlation coefficient by Kendall's Tau (here for a quadratic table) is around 0.41 and the test yields that this coefficient is significant, hence we can conclude that there exists a positive relationship between the placement of track popularity of a song on Spotify and the placement of views of the corresponding music video on Youtube, meaning a higher rank of the song's music video in Youtube views is associated with a higher rank inside of Spotify's streams.
 
-Even if not appropriate since the two variables have an ordinal scale and using $\chi^2$ test for independence would neglect additional information, Cramer's V (~0.33) states there exists a semi-weak relationship but without inferring anything about the direction of the relationship, only the strength of this relationship. Therefore, Kendall's Tau gives us the appropriate estimate, indicating the positive relationship between the two ordinal variables.
+Even if not appropriate since the two variables have an ordinal scale and using $\chi^2$ test for independence would neglect additional information, Cramer's V (~0.38) states there exists a semi-weak relationship but without inferring anything about the direction of the relationship, only the strength of this relationship. Therefore, Kendall's Tau gives us the appropriate estimate, indicating the positive relationship between the two ordinal variables.
 
 ```{r}
 
@@ -954,7 +1034,7 @@ cor.mtest <- function(mat, ...) {
   diag(p.mat) <- 0
   for (i in 1:(n - 1)) {
     for (j in (i + 1):n) {
-      tmp <- cor.test(mat[, i], mat[, j], ..., method = "kendall")
+      tmp <- cor.test(mat[, i], mat[, j], ..., method = "spearman")
       p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
     }
   }
@@ -987,9 +1067,9 @@ Prediction Reduction Error measures
 
 Goodmann and Kruskals $\lambda$
 
-1) predicting stream quantile without any knowledge about association with view quantiles, just taking the mode as predictor
+1) predicting track popularity quantile without any knowledge about association with view quantiles, just taking the mode as predictor
 
-2) predicting stream quantile with knowledge about track's corresponding placement in video view distribution
+2) predicting track popularity quantile with knowledge about track's corresponding placement in video view distribution
 
 ```{r}
 
@@ -1004,18 +1084,17 @@ tab2
 
 tab <- rowSums(tab2)
 
-message(paste("The mode is equal across all four quantiles of stream distribution, which is", modetab(tab)))
-
+message(paste("The mode across all four quantiles of stream distribution is", modetab(tab), " and is in the 2nd quantile"))
 
 e1_streams <- sum(tab) - modetab(tab)
 
-message(paste("Without any knowledge about an additional feature other than music streams itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab), "%."))
+message(paste("Without any knowledge about an additional feature other than music streams itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab)*100, "%."))
 
 e2_streams <- sum(tab2) - sum(modetab(tab2, 2))
 
-message(paste("Now having knowledge about an association between track streams and its video views and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab), "%, which is already much lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2), "% would have been predicted correctly (compared to ", 1-e1_streams/sum(tab), "% if there was no knowledge about video views classes.)"))
+message(paste("Now having knowledge about an association between track streams and its video views and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab), "%, which is already much lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2)*100, "% would have been predicted correctly (compared to ", (1-e1_streams/sum(tab))*100, "% if there was no knowledge about video views classes.)"))
 
-message("For example, the best prediction for a song that resided within the bottom quantile of video views would be that it also resides inside of the bottom quantile of streams as the mode of 95 was found to be from this class. Hence, using the class mode of the lower bottom quantile video views to predict lower bottom quantile streams would yield 95 correct cases but 180-95= 85 misclassified predictions.")
+message("For example, the best prediction for a song that resided within the bottom quantile of video views would be that it resides inside of the 2nd quantile of streams as the mode of 27 was found to be from this class. Hence, using the class mode of the lower bottom quantile video views to predict 2nd quantile streams would yield 27 correct cases but 49-27= 22 misclassified predictions.")
 
 lambda <- (e1_streams - e2_streams)/e1_streams
 
@@ -1041,18 +1120,18 @@ tab2
 
 tab <- rowSums(tab2)
 
-message(paste("The mode is equal across all four quantiles of stream distribution, which is", modetab(tab)))
+message(paste("The mode across all four quantiles of stream distribution is", modetab(tab), " which is from the 2nd quantile."))
 
 
 e1_streams <- sum(tab) - modetab(tab)
 
-message(paste("Without any knowledge about an additional feature other than music streams itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab), "%."))
+message(paste("Without any knowledge about an additional feature other than music streams itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab)*100, "%."))
 
 e2_streams <- sum(tab2) - sum(modetab(tab2, 2))
 
-message(paste("Now having knowledge about an association between track streams and its genre and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab), "%, which is already much lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2), "% would have been predicted correctly (compared to ", 1-e1_streams/sum(tab), "% if there was no knowledge about genre.)"))
+message(paste("Now having knowledge about an association between track streams and its genre and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab)*100, "%, which is already much lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2)*100, "% would have been predicted correctly (compared to ", (1-e1_streams/sum(tab))*100, "% if there was no knowledge about genre.)"))
 
-message("For example, the best prediction for a song that is from the genre 'Hip-Hop' would be that it resides inside of the 3rd quantile of streams as the mode of 116 was found to be from this class. Hence, using the class mode of the genre 'Hip-Hop' to predict 3rd quantile streams would yield 116 correct cases but 411-116= 295 misclassified predictions.")
+message("For example, the best prediction for a song that is from the genre 'Hip-Hop' would be that it resides inside of the 4th quantile of streams as the mode of 18 was found to be from this class. Hence, using the class mode of the genre 'Hip-Hop' to predict 4th quantile streams would yield 18 correct cases but 50-18= 32 misclassified predictions.")
 
 lambda <- (e1_streams - e2_streams)/e1_streams
 
@@ -1070,31 +1149,29 @@ For genre and stream quantile association the improvement of using this associat
 
 
 
-1) predicting stream quantile without any knowledge about association with follower > median indicator, just taking the mode as predictor
+1) predicting whether track was in charts without any knowledge about association with genre, just taking the mode as predictor
 
-2) predicting stream quantile with knowledge about follower indicator
+2) predicting chart indicator with knowledge about genre
 
 ```{r}
 
-tab2 <- table(numeric_cor_x$stream_quantile_ind, 
-              x$Follower_median_ind, dnn = c("Song streams", "Follower indicator"))
+tab2 <- table(no_streams_nonan$Charts,no_streams_nonan$Genre, dnn = c("Charts - Y/N", "Genre"))
 
 tab2
 
 tab <- rowSums(tab2)
 
-message(paste("The mode is equal across all four quantiles of stream distribution, which is", modetab(tab)))
-
+message(paste("The mode across the two charts classes (1: appeared in charts, 0: didn't appear), which is", modetab(tab), " is from class 1."))
 
 e1_streams <- sum(tab) - modetab(tab)
 
-message(paste("Without any knowledge about an additional feature other than music streams itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab), "%."))
+message(paste("Without any knowledge about an additional feature other than music streams itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab)*100, "%."))
 
 e2_streams <- sum(tab2) - sum(modetab(tab2, 2))
 
-message(paste("Now having knowledge about an association between track streams and its artist's followers and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab), "%, which is insignificantly lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2), "% would have been predicted correctly (compared to ", 1-e1_streams/sum(tab), "% if there was no knowledge about follower.)"))
+message(paste("Now having knowledge about an association between charts indicator and its genre and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab), "%, which is significantly lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2)*100, "% would have been predicted correctly (compared to ", (1-e1_streams/sum(tab))*100, "% if there was no knowledge about genre.)"))
 
-message("For example, the best prediction for a song of which artist's follower count is above the median would be that it resides inside of the 1st quantile of streams as the mode of 106 was found to be from this class. Hence, using the class mode of artists' followers above median to predict 1st quantile streams would yield 106 correct cases but 381-106 = 275 misclassified predictions.")
+message("For example, the best prediction for a song from the genre 'Techno' would be that it didn't appear in the charts as the mode of 47 was found to be from this class. Hence, using the class mode of genre to predict chart indication would yield 47 correct cases and 47-47 = 0 misclassified predictions.")
 
 lambda <- (e1_streams - e2_streams)/e1_streams
 
@@ -1113,10 +1190,10 @@ Analysis of variance
 
 table(x$Genre)
 
-wilcox.test(x$Streams[x$Genre == 'Hip Hop'], x$Streams[x$Genre == 'Pop'])
-t.test(x$Streams[x$Genre == 'Hip Hop'], x$Streams[x$Genre == 'Pop'])
+wilcox.test(x$Track_Popularity[x$Genre == 'Hip Hop'], x$Track_Popularity[x$Genre == 'Pop'])
+t.test(x$Track_Popularity[x$Genre == 'Hip Hop'], x$Track_Popularity[x$Genre == 'Pop'])
 
-fit <- aov(Streams~Genre , data =x)
+fit <- aov(Track_Popularity~Genre , data =x)
 summary(fit)
 
 
@@ -1134,9 +1211,9 @@ require("dplyr")
 
 exclude.cols <- c('stream_quantile_ind', 'viewsCount_quantile_ind', 'Follower_median_ind')
 
-no_nas <- numeric_cor_x[complete.cases(numeric_cor_x), ]
+# no_nas <- numeric_cor_x[complete.cases(numeric_cor_x), ]
 
-clean_coord <- dplyr::select(no_nas, -one_of(exclude.cols))
+clean_coord <- dplyr::select(numeric_cor_x, -one_of(exclude.cols))
 
 parcoord(clean_coord, var.label = TRUE)
 
@@ -1152,21 +1229,64 @@ andrews(clean_coord, ymax=4)
 
 # x_clean <- x[complete.cases(x), ]
 
-col_genre <- ifelse(x$Genre == 'Hip Hop', "black", "red")
+par(mfrow = c(2,2), mar = c(7,2,1,1), oma = c(0.1, 0.1, 0.1, 0.1))    # links,rechts,oben,unten
+
+music_genre <- 'Pop'
+
+col_genre <- ifelse(x$Genre == music_genre, "black", "red")
 
 
-keep.cols <- c('Streams', 'Artist_Follower', 'viewsCount', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
+keep.cols <- c('Track_Popularity', 'Artist_Popularity', 'Artist_Follower' ,'viewsCount', 'Track_Duration_ms', 'acousticness' , 'danceability' ,'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
 
-col_df <- dplyr::select(x_clean, keep.cols)
+#keep.cols <- c('Artist_Follower', 'viewsCount', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', #'tempo', 'valence')
+
+audio_features <- c('acousticness' , 'danceability' ,'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
+
+col_df <- dplyr::select(numeric_cor_x, keep.cols)
 log_col_df <- log(col_df)
 
-pairs(log_col_df, cex=0.5, col=col_genre)
+# pairs(log_col_df, cex=0.5, col=col_genre)
 
-parcoord(clean_coord, col=col_genre)
+selected_columns <- dplyr::select(clean_coord, audio_features)
 
-ax <- clean_coord
-ax$clr <- as.numeric(ifelse(col_genre == 'black', 1, 0))
-andrews(ax, ymax=4, clr=34)
+#selected_columns$color <- col_genre
+
+#selected_columns <- selected_columns[order(selected_columns$color, decreasing = TRUE),]
+
+#col_genre <- selected_columns$color
+
+# parcoord(selected_columns[, names(selected_columns) != "color"], col=col_genre, ... = par(las=2), main = music_genre)
+
+selected_columns$color <- col_genre
+selected_columns <- selected_columns[order(selected_columns$color, decreasing = TRUE),]
+
+
+ax <- selected_columns[, names(selected_columns) != "color"]
+ax$clr <- as.numeric(ifelse(selected_columns$color == 'black', 0, 1))
+andrews(ax, ymax=4, clr=10, main = music_genre)
+
+
+palette <- c('red', 'blue', 'black', 'purple')
+palette <- rainbow(length(levels(as.factor(x$Genre))))
+
+my_colors <- palette[as.numeric(x$Genre)]
+# my_colors <- unique(my_colors)
+#my_colors <- c('#E41A1C', '#984EA3', '#4DAF4A', '#377EB8')
+
+selected_columns <- dplyr::select(clean_coord, audio_features)
+
+
+
+parcoord(selected_columns , col= my_colors, var.label = FALSE, ... = par(las=2, mar = c(8,1,3,1), xpd=TRUE))
+title("Music genres - parallel coordinates", line = 0.6, adj = 0.1)
+legend("topright", inset=c(0.035,-0.1),legend = c('Classic', 'Techno', 'Pop', 'Hip Hop'), col = unique(my_colors),
+  bty = 'o', horiz = TRUE, pch = 15)
+
+
+ax <- selected_columns
+ax$clr <- x$Genre
+andrews(ax, ymax=4, clr=10, main = 'Music genres - Andrews curves')
+legend("topright",legend=levels(ax$clr), fill=rainbow(length(levels(as.factor(ax$clr)))))
 
 ```
 
@@ -1221,35 +1341,140 @@ xlab=names(numeric_cor_x)[ge$x[i]], ylab=names(numeric_cor_x)[ge$y[i]])
 
 # pc_cov <- prcomp(numeric_cor_x[23:32])
 
-unselect_col <- c('dislikeCount', 'likeCount')
+# unselect_col <- c('dislikeCount', 'likeCount')
 
-dplyr::select(numeric_cor_x, -one_of(unselect_col))
+# pc_cov <- prcomp(dplyr::select(numeric_cor_x, -one_of(unselect_col)))
 
-pc_cov <- prcomp(dplyr::select(numeric_cor_x, -one_of(unselect_col)))
+pc_cov <- prcomp(dplyr::select(numeric_cor_x, audio_features))
 
 # pc_cov <- prcomp(numeric_cor_x[1:28])
 
-par(mfrow=c(1,2))
+
 plot(pc_cov, main="Scree plot as bar chart (cov)")
+
+par(mfrow=c(1,2))
+
 plot(pc_cov$sdev^2, type="b", main="Scree plot (cov)")
 
-pc_cor <- prcomp(dplyr::select(numeric_cor_x, -one_of(unselect_col)), center=T, scale=T)
-plot(pc_cor$sdev^2, type="b", main="Scree plot (cor)")
+#pc_cor <- prcomp(dplyr::select(numeric_cor_x, -one_of(unselect_col)), center=T, scale=T)
+pc_cor <- prcomp(dplyr::select(numeric_cor_x, audio_features), center=T, scale=T)
+barplot((pc_cor$sdev^2)/round(sum(pc_cor$sdev^2))*100, type="b", main="Scree plot (cor, percentage of variance)")
+
+loading_scores <- pc_cor$rotation
+loading_scores
+
+
+
+library(corrplot)
+
+corrplot(loading_scores, method="color", col=col(200), 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt=90, #Text label color and rotation
+         diag=TRUE, mar = c(0,0,5,5), title = 'PCA - loadings matrix')
+
+
+
+
+
+# PC1: variables accounting for allocation of samples:
+# acousticness and instrumentalness (left), i.e. the higher the degree of those variables, the further left
+# loudness, energy and danceability (right), i.e. the higher the degree of those variables, the further right
+
+# PC2:
+# valence and speechiness (up)
+# instrumentalness and tempo (down)
+
+# plot(pc_cor$x[,1], pc_cor$x[,2])
+
 
 library("psych")
-ppc<-principal(dplyr::select(numeric_cor_x, -one_of(unselect_col)), rotate="none")
-ppc
-scree(dplyr::select(numeric_cor_x, -one_of(unselect_col)))
+ppc_none<-principal(dplyr::select(numeric_cor_x, audio_features), rotate="none")
+ppc_none
+
+par(mfrow=c(1,2))
+
+scree(dplyr::select(numeric_cor_x, audio_features))
+
+# As can be seen from the scree plot the decision for the optimal number of components whether it should be two or three is ambiguous. The eigenvalue of the third component is 0.98 and should be strictly speaking according to the Kaiser criterion be omitted. However, since it is known that there are four subgroups (=genres) in the data and two of them are distinctively different from each other (classical music and Techno), two principal components would be sufficient to tell apart these two groups from the sample. Apparently, a third component could distinguish between Pop and Hip Hop whose differences weren't captured by only two PC, though.
+
+ppc_varimax<-principal(dplyr::select(numeric_cor_x, audio_features), rotate="varimax")
+ppc_varimax
 
 par(mfrow=c(1,2))
 
 biplot(pc_cov)
 biplot(pc_cor)
 
+par(mfrow=c(1,2))
+
 pc_cor_pred <- predict(pc_cor)
-plot(pc_cor_pred[, 1:2], col = col_genre)
+plot(pc_cor_pred[, 1:2], col = my_colors)
 plot(pc_cor_pred[, 1:2], type = "n", xlab = "PC1", ylab = "PC2")
-text(pc_cor_pred[, 1:2], as.character(x$Genre))
+text(pc_cor_pred[, 1:2], as.character(x$Genre), col = my_colors)
+
+# Total variance of audiofeatures:
+
+sum(diag(var(scale(dplyr::select(numeric_cor_x, audio_features))))) # gives the total number of variables
+
+ev <- psych::scree(scale(dplyr::select(numeric_cor_x, audio_features))) # important to use standardized data for Kaiser criterion
+ev
+
+ev$pcv
+
+
+
+# According to Kaiser criterion, from the standardized data we select as many components as its corresponding eigenvalues are greater than one. In the case of audio features the optimal number of components would be two since two eigenvalues are greater than one.
+
+cumsum(ev$pcv)/length(audio_features) # identical
+cumsum((pc_cor$sdev^2)/sum(pc_cor$sdev^2)) # identical
+
+# According to the 90% criterion there would be 5 components needed to appropriately retain the variance in the data by reducing the feature space from nine to five.
+
+# After having decided for two components, we obtain the loadings matrix for our new feature space:
+
+psych::principal(scale(dplyr::select(numeric_cor_x, audio_features)), nfactors=2, rotate="none")
+
+# Clearly, from the first PC loudness, energy and danceability are characterising music genres such as Techno, Pop and Hip Hop whereas acousticness and instrumentalness describe classical music.
+
+# The second PC captures distinct characteristics between Techno, Pop and Hip Hop with valence and speechiness describing Pop and Hip Hop whereas instrumentalness, energy and tempo better describe Techno music.
+
+
+library("robustbase")
+out <- adjOutlyingness(scale(dplyr::select(numeric_cor_x, audio_features)), ndir=5000, clower=0, cupper=0)
+hist(out$adjout)
+rug(out$adjout)
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("pcaMethods")
+
+
+library("pcaMethods")
+data(metaboliteDataComplete)
+
+mdc <- scale(metaboliteDataComplete, center=TRUE, scale=FALSE)
+cond <- runif(length(mdc)) < 0.05
+mdcOut <- mdc
+mdcOut[cond] <- 10
+resSvd <- pca(mdc, method="svd", nPcs=5, center=FALSE)
+resSvdOut <- pca(mdcOut, method="svd", nPcs=5, center=FALSE)
+resRobSvd <- pca(mdcOut, method="robustPca", nPcs=5, center=FALSE)
+mdcNa <- mdc
+mdcNa[cond] <- NA
+resPPCA <- pca(mdcNa, method="ppca", nPcs=5, center=FALSE)
+
+# Parallel analysis of Horn
+
+library("paran")
+
+paran(scale(dplyr::select(numeric_cor_x, audio_features)), centile=95, all=T, graph=T)
+
+# Parallel analysis of Horn confirmes that there are two dimensions to be retained (i.e. number of adj. eigenvalues > 1).
+
+
+
+
 
 ```
 
