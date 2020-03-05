@@ -1349,7 +1349,6 @@ pc_cov <- prcomp(dplyr::select(numeric_cor_x, audio_features))
 
 # pc_cov <- prcomp(numeric_cor_x[1:28])
 
-
 plot(pc_cov, main="Scree plot as bar chart (cov)")
 
 par(mfrow=c(1,2))
@@ -1362,8 +1361,6 @@ barplot((pc_cor$sdev^2)/round(sum(pc_cor$sdev^2))*100, type="b", main="Scree plo
 
 loading_scores <- pc_cor$rotation
 loading_scores
-
-
 
 library(corrplot)
 
@@ -1403,12 +1400,21 @@ ppc_varimax
 par(mfrow=c(1,2))
 
 biplot(pc_cov)
-biplot(pc_cor)
 
 par(mfrow=c(1,2))
+biplot(pc_cor) # loadings plot with loadings scaled to fit in same graph with scores
+plot(pc_cor$rotation[, 1:2]) # loadings in original measures
+text(pc_cor$rotation[, 1:2], as.character(names(dplyr::select(numeric_cor_x, audio_features))), pos = 1, cex = 0.8)
+
 
 pc_cor_pred <- predict(pc_cor)
+
+# scale(dplyr::select(numeric_cor_x, audio_features))%*%inv(t(pc_cor$rotation)) identical to predict ( = scores)
+
+par(mfrow=c(1,2))
 plot(pc_cor_pred[, 1:2], col = my_colors)
+plot(pc_cor$rotation[, 1:2])
+
 plot(pc_cor_pred[, 1:2], type = "n", xlab = "PC1", ylab = "PC2")
 text(pc_cor_pred[, 1:2], as.character(x$Genre), col = my_colors)
 
@@ -1432,37 +1438,79 @@ cumsum((pc_cor$sdev^2)/sum(pc_cor$sdev^2)) # identical
 
 # After having decided for two components, we obtain the loadings matrix for our new feature space:
 
-psych::principal(scale(dplyr::select(numeric_cor_x, audio_features)), nfactors=2, rotate="none")
+test <- psych::principal(scale(dplyr::select(numeric_cor_x, audio_features)), nfactors=2, rotate="none", residuals = TRUE)
+
+fit <- test$scores %*% t(test$loadings)
+
+residuals <- scale(dplyr::select(numeric_cor_x, audio_features)) - fit
+
+se_model=numeric(0)
+
+for (i in 1:nrow(residuals)){
+  
+  sum_of_square_res <- residuals[i,] %*% residuals[i,]
+  
+  se_model[i] = sum_of_square_res
+  
+}
+
+plot(se_model)
+
+1-(sum(diag(var(residuals)))/sum(diag(var(dplyr::select(numeric_cor_x, audio_features)))))
+
+
 
 # Clearly, from the first PC loudness, energy and danceability are characterising music genres such as Techno, Pop and Hip Hop whereas acousticness and instrumentalness describe classical music.
 
 # The second PC captures distinct characteristics between Techno, Pop and Hip Hop with valence and speechiness describing Pop and Hip Hop whereas instrumentalness, energy and tempo better describe Techno music.
+
+# Let's investigate the residuals when deciding for k*=2 components:
+# 1) Get scores for each individual component
+
+t1 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,1] # N x K
+t2 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,2]
+#t3 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,3]
+#t4 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,4]
+#t5 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,5]
+#t6 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,6]
+#t7 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,7]
+#t8 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,8]
+#t9 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,9]
+
+fit <- t1%*%t(pc_cor$rotation[,1]) + t2%*%t(pc_cor$rotation[,2]) # + # N x K
+      #t3%*%t(pc_cor$rotation[,3]) + t4%*%t(pc_cor$rotation[,4]) + 
+      #t5%*%t(pc_cor$rotation[,5]) + t6%*%t(pc_cor$rotation[,6]) + 
+      #t7%*%t(pc_cor$rotation[,7]) + t8%*%t(pc_cor$rotation[,8]) +
+      #t9%*%t(pc_cor$rotation[,9])
+
+
+residual <- scale(dplyr::select(numeric_cor_x, audio_features)) - fit
+
+se=numeric(0)
+
+for (i in 1:nrow(residual)){
+  
+  sum_of_square_res <- residual[i,] %*% residual[i,]
+  
+  se[i] = sum_of_square_res
+  
+}
+
+se
+
+sum(se)
+hist(se)
 
 
 library("robustbase")
 out <- adjOutlyingness(scale(dplyr::select(numeric_cor_x, audio_features)), ndir=5000, clower=0, cupper=0)
 hist(out$adjout)
 rug(out$adjout)
+x[!out$nonOut,]
 
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install("pcaMethods")
+# It seems there are seven outliers. Presence of outliers can the model coefficients (the loadings) cause to be dominated by these outlying data points since the principle of PCA (and like any L2 minimizing technique) is to fit the coefficients such that the squared difference between actual and prediction is to be minimized. At first place, while standardizing the data everything is scaled such that it represents deviations from the (column) mean, giving greater weight to potential outliers deviating from the centre.
 
 
-library("pcaMethods")
-data(metaboliteDataComplete)
-
-mdc <- scale(metaboliteDataComplete, center=TRUE, scale=FALSE)
-cond <- runif(length(mdc)) < 0.05
-mdcOut <- mdc
-mdcOut[cond] <- 10
-resSvd <- pca(mdc, method="svd", nPcs=5, center=FALSE)
-resSvdOut <- pca(mdcOut, method="svd", nPcs=5, center=FALSE)
-resRobSvd <- pca(mdcOut, method="robustPca", nPcs=5, center=FALSE)
-mdcNa <- mdc
-mdcNa[cond] <- NA
-resPPCA <- pca(mdcNa, method="ppca", nPcs=5, center=FALSE)
 
 # Parallel analysis of Horn
 
