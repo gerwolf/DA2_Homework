@@ -1345,32 +1345,54 @@ xlab=names(numeric_cor_x)[ge$x[i]], ylab=names(numeric_cor_x)[ge$y[i]])
 
 # pc_cov <- prcomp(dplyr::select(numeric_cor_x, -one_of(unselect_col)))
 
-pc_cov <- prcomp(dplyr::select(numeric_cor_x, audio_features))
+xx <-  as.matrix(dplyr::select(numeric_cor_x, audio_features))
+z <- scale(xx)
 
-# pc_cov <- prcomp(numeric_cor_x[1:28])
-
-plot(pc_cov, main="Scree plot as bar chart (cov)")
+#pc_cov <- prcomp(xx)
+#eigen_cov <- eigen(cov(xx))
+#E <- eigen_cov$vectors
+#scores <- xx%*%E
+#plot(pc_cov, main="Scree plot as bar chart (cov)")
 
 par(mfrow=c(1,2))
 
-plot(pc_cov$sdev^2, type="b", main="Scree plot (cov)")
+#plot(pc_cov$sdev^2, type="b", main="Scree plot (cov)")
 
 #pc_cor <- prcomp(dplyr::select(numeric_cor_x, -one_of(unselect_col)), center=T, scale=T)
-pc_cor <- prcomp(dplyr::select(numeric_cor_x, audio_features), center=T, scale=T)
+# pc_cor <- prcomp(dplyr::select(numeric_cor_x, audio_features), center=T, scale=T)
+set.seed(999)
+pc_cor <- prcomp(z, center=F, scale=F)
+eigen_cor <- eigen(cov(z))
+E <- eigen_cor$vectors
+E
+# eigenvectors with wrong signs: 1, 3, 4, 5, 6
+
+pc_cor$rotation
+
+# It is suprising that for some components the signs of the manually computed loadings (i.e. eigenvectors of standardized data) and the one from the prcomp package are exactly opposite.
+
+# Manually change signs
+
+E[, 1] <- E[, 1]*-1
+E[, 3] <- E[, 3]*-1
+E[, 4] <- E[, 4]*-1
+E[, 5] <- E[, 5]*-1
+E[, 6] <- E[, 6]*-1
+
+scores <- z%*%E # are the same
+pc_cor$x # are the same
+
 barplot((pc_cor$sdev^2)/round(sum(pc_cor$sdev^2))*100, type="b", main="Scree plot (cor, percentage of variance)")
 
-loading_scores <- pc_cor$rotation
-loading_scores
+loadings <- pc_cor$rotation
+loadings
 
 library(corrplot)
 
-corrplot(loading_scores, method="color", col=col(200), 
+corrplot(loadings, method="color", col=col(200), 
          addCoef.col = "black", # Add coefficient of correlation
          tl.col="black", tl.srt=90, #Text label color and rotation
          diag=TRUE, mar = c(0,0,5,5), title = 'PCA - loadings matrix')
-
-
-
 
 
 # PC1: variables accounting for allocation of samples:
@@ -1384,18 +1406,19 @@ corrplot(loading_scores, method="color", col=col(200),
 # plot(pc_cor$x[,1], pc_cor$x[,2])
 
 
+
+
+
+
+
+
 library("psych")
-ppc_none<-principal(dplyr::select(numeric_cor_x, audio_features), rotate="none")
-ppc_none
 
 par(mfrow=c(1,2))
 
-scree(dplyr::select(numeric_cor_x, audio_features))
+scree(xx) #  scree standardizes the data by default
 
 # As can be seen from the scree plot the decision for the optimal number of components whether it should be two or three is ambiguous. The eigenvalue of the third component is 0.98 and should be strictly speaking according to the Kaiser criterion be omitted. However, since it is known that there are four subgroups (=genres) in the data and two of them are distinctively different from each other (classical music and Techno), two principal components would be sufficient to tell apart these two groups from the sample. Apparently, a third component could distinguish between Pop and Hip Hop whose differences weren't captured by only two PC, though.
-
-ppc_varimax<-principal(dplyr::select(numeric_cor_x, audio_features), rotate="varimax")
-ppc_varimax
 
 par(mfrow=c(1,2))
 
@@ -1407,38 +1430,125 @@ plot(pc_cor$rotation[, 1:2]) # loadings in original measures
 text(pc_cor$rotation[, 1:2], as.character(names(dplyr::select(numeric_cor_x, audio_features))), pos = 1, cex = 0.8)
 
 
-pc_cor_pred <- predict(pc_cor)
+scores <- z %*% pc_cor$rotation
+
+# pc_cor_pred <- predict(pc_cor)
 
 # scale(dplyr::select(numeric_cor_x, audio_features))%*%inv(t(pc_cor$rotation)) identical to predict ( = scores)
 
 par(mfrow=c(1,2))
-plot(pc_cor_pred[, 1:2], col = my_colors)
+plot(scores[, 1:2], col = my_colors)
 plot(pc_cor$rotation[, 1:2])
 
-plot(pc_cor_pred[, 1:2], type = "n", xlab = "PC1", ylab = "PC2")
-text(pc_cor_pred[, 1:2], as.character(x$Genre), col = my_colors)
+plot(scores[, 1:2], type = "n", xlab = "PC1", ylab = "PC2")
+text(scores[, 1:2], as.character(x$Genre), col = my_colors)
 
 # Total variance of audiofeatures:
 
-sum(diag(var(scale(dplyr::select(numeric_cor_x, audio_features))))) # gives the total number of variables
+sum(diag(var(z))) # gives the total number of variables (since the variance has been scaled to 1)
 
-ev <- psych::scree(scale(dplyr::select(numeric_cor_x, audio_features))) # important to use standardized data for Kaiser criterion
+ev <- psych::scree(z) # important to use standardized data for Kaiser criterion
 ev
 
 ev$pcv
 
-
-
 # According to Kaiser criterion, from the standardized data we select as many components as its corresponding eigenvalues are greater than one. In the case of audio features the optimal number of components would be two since two eigenvalues are greater than one.
 
-cumsum(ev$pcv)/length(audio_features) # identical
+cumsum(ev$pcv)/length(audio_features) # identical (we can use length because the total variance of the standardized variables is the sum of the diagonal elements which is 1 in every variable)
 cumsum((pc_cor$sdev^2)/sum(pc_cor$sdev^2)) # identical
 
 # According to the 90% criterion there would be 5 components needed to appropriately retain the variance in the data by reducing the feature space from nine to five.
 
 # After having decided for two components, we obtain the loadings matrix for our new feature space:
+set.seed(999)
+test <- psych::principal(z, nfactors=1, rotate="none", residuals = TRUE) # doesn't matter if we supply standardized data or not-standardized
 
-test <- psych::principal(scale(dplyr::select(numeric_cor_x, audio_features)), nfactors=2, rotate="none", residuals = TRUE)
+# supplying the number of components in psych::principal doesn't change the computation of the loadings, just of the scores
+
+# test$scores[,1]*sqrt(test$values[1]) this transforms scores from psych with no unit-length eigenvectors to scores with unit-length eigenvectors for the first component and is equivalent to pc_cor$x[,1]
+
+# transform loadings of psych:principal (of not unit-length) to unit-length according to 1/sqrt(a^2 + b^2) * (a, b)
+
+# 1/sqrt(sum(test$loadings[,1]^2))*test$loadings[,1]
+
+# rescaling eigenvectors by multiplying them with the square root of their corresponding eigenvalue
+
+manual_loadings <- matrix(nrow = dim(z)[2], ncol = dim(z)[2])
+
+for (i in 1:dim(z)[2]){
+  
+  manual_loadings[,i] <- E[,i] * sqrt(eigen_cor$values[i])
+}
+
+#  Still signs are interchanged, affected components are 3 and 9, change signs
+
+manual_loadings[,3] <- manual_loadings[,3]*-1
+manual_loadings[,9] <- manual_loadings[,9]*-1
+
+# Computing residuals
+
+# z %*% (test$loadings[,1] / sqrt(test$values[1])) # identical pc_cor$x[,1]
+
+# scores in psych:principal are computed according to (z %*% pc_cor$rotation[,1]) / sqrt(test$values[1]), i.e. using the unit-length eigenvectors and dividing them by the square root of the correspoding eigenvalue
+
+# result of scores for each component is indepedent of supplied total number of components!
+
+
+
+test <- psych::principal(z, nfactors=1, rotate="none", residuals = TRUE)
+
+scores <- (z %*% (1/sqrt(sum(test$loadings[,1]^2))*test$loadings[,1])) / sqrt(test$values[1])
+
+ # scores <- (z %*% pc_cor$rotation[,1]) / sqrt(test$values[1]) these two expressions are identical
+
+# fit <- scores %*% t(1/sqrt(sum(test$loadings[,1]^2))*test$loadings[,1])
+
+fit <- scores %*% t(test$loadings[,1])
+
+residuals <- z - fit # this is correct!
+
+
+
+
+
+
+RMSE = function(m, o){
+  sqrt(mean((m - o)^2))
+}
+
+num_comp <- 2
+test <- psych::principal(z, nfactors=num_comp, rotate="none", residuals = TRUE)
+psych_fit <- test$scores %*% t(test$loadings[,1:num_comp])
+residuals_psych <- z - psych_fit
+RMSE(z, psych_fit)
+
+
+
+
+
+
+# Computing scores: multiply each standardized data row with the corresponding loadings vector and divide by the corresponding eigenvalue
+
+(z%*%test$loadings[,1])/test$values[1]
+
+# psych::principal omits (or rather R print) values of eigenvectors that are smaller than 0.3, so 
+
+full_loadings <- unclass(test$loadings)
+
+manual_loadings[6,2] <- 0 
+
+(z%*%test$loadings[,2])/test$values[2]
+
+
+
+
+
+
+
+
+
+
+scores <- z %*% test$loadings
 
 fit <- test$scores %*% t(test$loadings)
 
@@ -1467,8 +1577,10 @@ plot(se_model)
 # Let's investigate the residuals when deciding for k*=2 components:
 # 1) Get scores for each individual component
 
-t1 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,1] # N x K
-t2 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,2]
+t1 <- z%*%pc_cor$rotation[,1] # N x K
+t2 <- z%*%pc_cor$rotation[,2]
+
+
 #t3 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,3]
 #t4 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,4]
 #t5 <- scale(dplyr::select(numeric_cor_x, audio_features))%*%pc_cor$rotation[,5]
@@ -1483,8 +1595,9 @@ fit <- t1%*%t(pc_cor$rotation[,1]) + t2%*%t(pc_cor$rotation[,2]) # + # N x K
       #t7%*%t(pc_cor$rotation[,7]) + t8%*%t(pc_cor$rotation[,8]) +
       #t9%*%t(pc_cor$rotation[,9])
 
+fit <- z %*% (pc_cor$rotation[,1:2] %*% t(pc_cor$rotation[,1:2]))
 
-residual <- scale(dplyr::select(numeric_cor_x, audio_features)) - fit
+residual <- z - fit
 
 se=numeric(0)
 
