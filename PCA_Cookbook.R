@@ -369,7 +369,7 @@ plot(tsquared, type = 'l', ylim = c(0,tsquared_lim99*1.1))
 abline(h=tsquared_lim99, col = 'red', lty = 2)
 abline(h=tsquared_lim95, col = 'darkgreen', lty = 2)
 
-
+# source: https://github.com/hredestig/pcaMethods/blob/master/R/pca.R
 
 simpleEllipse <- function(x, y, alfa=0.95, len=200) {
   N <- length(x)
