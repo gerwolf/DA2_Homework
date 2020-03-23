@@ -1,0 +1,3188 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+#############################################################
+
+# Data prep
+
+library("rio")
+x <- import("https://docs.google.com/spreadsheets/d/1h7XhLd2Byp4OcXSdtxHly9iS7RA673RJ/export?format=csv&gid=1083477596")
+x$commentCount <- as.integer(x$commentCount)
+x$viewsCount <- as.numeric(x$viewsCount)
+x$acousticness <- as.numeric(sub(",", ".", x$acousticness, fixed = TRUE))
+x$danceability <- as.numeric(sub(",", ".", x$danceability, fixed = TRUE))
+x$energy <- as.numeric(sub(",", ".", x$energy, fixed = TRUE))
+x$instrumentalness <- as.numeric(sub(",", ".", x$instrumentalness, fixed = TRUE))
+x$liveness <- as.numeric(sub(",", ".", x$liveness, fixed = TRUE))
+x$loudness <- as.numeric(sub(",", ".", x$loudness, fixed = TRUE))
+x$speechiness <- as.numeric(sub(",", ".", x$speechiness, fixed = TRUE))
+x$tempo <- as.numeric(sub(",", ".", x$tempo, fixed = TRUE))
+x$valence <- as.numeric(sub(",", ".", x$valence, fixed = TRUE))
+x$key <- as.factor(x$key)
+x$time_signature <- as.factor(x$time_signature)
+min_max_normalize <- function(x)
+{
+  return( (1000-10)*((x- min(x)) /(max(x)-min(x))) + 10)
+}
+x$acousticness <- min_max_normalize(x$acousticness)
+x$danceability <- min_max_normalize(x$danceability)
+x$energy <- min_max_normalize(x$energy)
+x$instrumentalness <- min_max_normalize(x$instrumentalness)
+x$liveness <- min_max_normalize(x$liveness)
+x$loudness <- min_max_normalize(x$loudness)
+x$speechiness <- min_max_normalize(x$speechiness)
+x$tempo <- min_max_normalize(x$tempo)
+x$valence <- min_max_normalize(x$valence)
+x$Genre <- as.factor(x$Genre)
+x$key <- as.factor(x$key)
+x$mode <- as.factor(x$mode)
+x$Charts <- as.factor(x$Charts)
+
+library("dplyr")
+
+x <- dplyr::select(x, -one_of('Streams'))
+x <- x[complete.cases(x), ]
+
+
+```
+
+```{r}
+
+var_list <- c('Artist_Albums_Number', 'Artist_Albums_Tracks_Number', 'Artist_Appearances_Number', 'Artist_Appearances_Tracks_Number', 'Artist_Compilations_Number', 'Artist_Compilations_Tracks_Number', 'Artist_Follower', 'Artist_Popularity', 'Artist_Singles_Number', 'Artist_Singles_Tracks_Number', 'Track_Duration_ms', 'Track_Popularity', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence', 'commentCount', 'dislikeCount', 'likeCount', 'viewsCount')
+
+par(mar = rep(2, 4))
+
+par(mfrow=c(5,5))
+
+for (i in 1:length(var_list)){
+  
+  hist(x[, var_list[i]], probability = TRUE, col = "gray", main = var_list[i], xlab = "")
+  lines(density(x[, var_list[i]]), col = "red")
+
+}
+
+
+
+
+```
+
+
+
+```{r}
+par(mar = rep(2, 4))
+
+par(mfrow=c(5,5))
+
+for(i in 1:length(var_list)){
+  
+  df <- data.frame(x[,var_list[i]])
+  names(df)[1] <- var_list[i]
+  
+  #ggplot(df, aes(x="",y=Artist_Albums_Number)) + stat_boxplot(geom ='errorbar') + geom_boxplot(outlier.colour="black", outlier.shape=16, #outlier.size=2, notch=FALSE)
+  
+  boxplot(x = df[,1], main = var_list[i], notch = FALSE)
+
+}
+
+
+
+
+```
+
+
+
+
+Normality testing
+
+
+```{r}
+
+#strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Track_Duration_ms', 'Track_Popularity', 'viewsCount', #'acousticness', 'danceability', 'energy', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
+
+for (i in 1:length(var_list)){
+  
+  column_name <- var_list[i]
+  
+  message(column_name)
+  
+  sub_df <- as.numeric(x[,column_name])
+  
+  # sub_df <- sub_df[complete.cases(sub_df), ]
+  
+  #sub_df <- as.numeric(as.character(unlist(sub_df[[1]])))
+  
+  test_statistic <- ks.test(sub_df, "pnorm", mean=mean(sub_df), sd=sd(sub_df))$statistic
+  critical_value <- 1.3581 / sqrt (length(sub_df))
+  
+  if (test_statistic > critical_value) {
+message(column_name)
+} else {
+message(paste(" ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+}}
+
+
+```
+
+```{r}
+
+x_scaled <- as.data.frame(scale(x[, var_list]))
+
+par(mar = rep(2, 4))
+
+par(mfrow=c(5,5))
+
+for (i in 1:length(var_list)){
+  
+  hist(x_scaled[, var_list[i]], probability = TRUE, col = "gray", main = var_list[i], xlab = "")
+  lines(density(x_scaled[, var_list[i]]), col = "red")
+
+}
+
+
+```
+
+
+```{r}
+
+par(mar = rep(2, 4))
+
+par(mfrow=c(5,5))
+
+for(i in 1:length(var_list)){
+  
+  df <- data.frame(x_scaled[,var_list[i]])
+  names(df)[1] <- var_list[i]
+  
+  #ggplot(df, aes(x="",y=Artist_Albums_Number)) + stat_boxplot(geom ='errorbar') + geom_boxplot(outlier.colour="black", outlier.shape=16, #outlier.size=2, notch=FALSE)
+  
+  boxplot(x = df[,1], main = var_list[i], notch = FALSE)
+
+}
+
+```
+
+
+
+```{r}
+
+for (i in 1:length(var_list)){
+  
+  column_name <- var_list[i]
+  
+  message(column_name)
+  
+  sub_df <- as.numeric(x_scaled[,column_name])
+  
+  # sub_df <- sub_df[complete.cases(sub_df), ]
+  
+  #sub_df <- as.numeric(as.character(unlist(sub_df[[1]])))
+  
+  test_statistic <- ks.test(sub_df, "pnorm", mean=mean(sub_df), sd=sd(sub_df))$statistic
+  critical_value <- 1.3581 / sqrt (length(sub_df))
+  
+  if (test_statistic > critical_value) {
+message(column_name)
+} else {
+message(paste(" ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+}}
+
+
+
+```
+
+```{r}
+
+strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Artist_Singles_Number', 'Artist_Singles_Tracks_Number', 'Track_Duration_ms', 'Track_Popularity', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence', 'likeCount', 'viewsCount')
+
+library("psych")
+library("car")
+
+ksD <- function (p, x) {
+  y <- bcPower(x, p)
+  ks.test(y, "pnorm", mean=mean(y), sd=sd(y))$statistic
+}
+
+oldw <- getOption("warn")
+options(warn = -1)
+
+min_values <- c()
+
+for (column_index in 1:length(strictly_positive_variables)){
+  
+  column_name <- strictly_positive_variables[column_index]
+  
+  x_sub <- x[[paste(column_name)]]
+  
+  result <- optimize(ksD, c(-5,5), x=x_sub)
+  
+  min_values[column_index] <- result$minimum
+  
+  message(paste(column_index, ', minimum value is: ', result$minimum))
+  
+}
+
+options(warn = oldw)
+
+```
+
+
+```{r}
+
+column_index <- 1
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+Artist_Follower_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 2
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+Artist_Popularity_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 3
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+Artist_Singles_Number_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 4
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+Artist_Singles_Tracks_Number_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 5
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+Track_Duration_ms_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 6
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+Track_Popularity_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 7
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+acousticness_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 8
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+danceability_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 9
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+energy_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 10
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+instrumentalness_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 11
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+liveness_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 12
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+loudness_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 13
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+speechiness_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 14
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+tempo_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 15
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+valence_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 16
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+likeCount_trans <- bcPower(x_sub, min_values[column_index])
+
+column_index <- 17
+column_name <- strictly_positive_variables[column_index]
+x_sub <- x[[paste(column_name)]]
+viewsCount_trans <- bcPower(x_sub, min_values[column_index])
+
+
+```
+
+
+```{r}
+
+hist_trans_list <- list(Artist_Follower_trans, 
+                        Artist_Popularity_trans,
+                        Artist_Singles_Number_trans,
+                        Artist_Singles_Tracks_Number_trans,
+                        Track_Duration_ms_trans, 
+                        Track_Popularity_trans,
+                     acousticness_trans, 
+                     danceability_trans, 
+                     energy_trans, 
+                     instrumentalness_trans,
+                     liveness_trans, 
+                     loudness_trans, 
+                     speechiness_trans, 
+                     tempo_trans, 
+                     valence_trans,
+                     likeCount_trans,
+                     viewsCount_trans)
+
+par(mar = rep(2, 4))
+par(mfrow=c(4,5))
+
+for (trans_index in 1:length(hist_trans_list)){
+  
+  column_name <- strictly_positive_variables[trans_index]
+  
+  selected_trans <- hist_trans_list[trans_index]
+  selected_trans <- as.numeric(as.character(unlist(selected_trans[[1]])))
+  
+  hist(selected_trans, col = "gray", probability = TRUE, main = column_name, xlab = "")
+  points(seq(min(selected_trans), max(selected_trans), length.out = 500),
+       dnorm(seq(min(selected_trans), max(selected_trans), length.out = 500),
+             mean(selected_trans),sd(selected_trans)), type = "l", col = "red")
+  
+  test_statistic <- ks.test(selected_trans, "pnorm", mean=mean(selected_trans), sd=sd(selected_trans))$statistic
+  critical_value <- 1.3581 / sqrt (length(selected_trans))
+  
+  if (test_statistic > critical_value) {
+message(paste("Transformed ", column_name , " is not approximately normally distributed.", test_statistic, critical_value))
+} else {
+message(paste("Transformed ", column_name , " is approximately normally distributed!", test_statistic, critical_value))  
+}}
+
+
+
+```
+
+```{r}
+
+par(mar = rep(2, 4))
+
+par(mfrow=c(4,5))
+
+for(trans_index in 1:length(strictly_positive_variables)){
+  
+  
+  column_name <- strictly_positive_variables[trans_index]
+  
+  selected_trans <- hist_trans_list[trans_index]
+  selected_trans <- as.numeric(as.character(unlist(selected_trans[[1]])))
+  
+  df <- data.frame(selected_trans)
+  names(df)[1] <- strictly_positive_variables[trans_index]
+  
+  boxplot(x = df[,1], main = strictly_positive_variables[trans_index], notch = FALSE)
+  
+}
+
+
+```
+
+Correlation
+
+```{r}
+
+
+library(corrplot)
+
+method <- "pearson"
+
+clean_cor <- cor(x[,var_list], method = method)
+
+cor.mtest <- function(mat, ...) {
+  mat <- as.matrix(mat)
+  n <- ncol(mat)
+  p.mat<- matrix(NA, n, n)
+  diag(p.mat) <- 0
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      tmp <- cor.test(mat[, i], mat[, j], ..., method = method)
+      p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+    }
+  }
+  colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+  p.mat
+}
+
+# matrix of the p-value of the correlation
+p.mat <- cor.mtest(clean_cor)
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+significance_level <- 0.05
+
+corrplot(clean_cor, method="color", col=col(200),
+         type="upper", order="alphabet", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col="black", tl.srt=90, #Text label color and rotation
+         # Combine with significance
+         p.mat = p.mat, sig.level = significance_level, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE)
+
+
+
+
+```
+
+Steiger's Z test
+
+```{r}
+
+#
+
+lm1 <- lm(x$Artist_Popularity ~ x$Artist_Follower)
+summary(lm1)
+lm2 <- lm(Artist_Popularity_trans ~ Artist_Follower_trans)
+summary(lm2)
+
+par(mfrow=c(1,2))
+plot(x$Artist_Follower, x$Artist_Popularity, main = paste("Untransformed, R^2=", round(summary(lm1)$r.squared, digits =2)), xlab = "Artist_Follower", ylab = "Artist_Popularity")
+plot(Artist_Follower_trans, Artist_Popularity_trans, main = paste("Box-Cox transformed, R^2=", round(summary(lm2)$r.squared, digits =2)), xlab = "Artist_Follower", ylab = "Artist_Popularity")
+
+bivariate_df_base <- data.frame(x$Artist_Follower, x$Artist_Popularity)
+bivariate_df_bc <- data.frame(Artist_Follower_trans, Artist_Popularity_trans)
+
+library("MVN")
+MVN::mvn(bivariate_df_base, mvnTest = "mardia")$multivariateNormality # Not jointly normal
+MVN::mvn(bivariate_df_base, mvnTest = "hz")$multivariateNormality # Not jointly normal
+MVN::mvn(bivariate_df_base, mvnTest = "royston")$multivariateNormality # Not jointly normal
+MVN::mvn(bivariate_df_base, mvnTest = "energy")$multivariateNormality # Jointly normal
+
+MVN::mvn(bivariate_df_bc, mvnTest = "mardia")$multivariateNormality # Not jointly normal
+MVN::mvn(bivariate_df_bc, mvnTest = "hz")$multivariateNormality # Not jointly normal
+MVN::mvn(bivariate_df_bc, mvnTest = "royston")$multivariateNormality # Not jointly normal
+MVN::mvn(bivariate_df_bc, mvnTest = "energy")$multivariateNormality # Jointly normal
+
+```
+
+```{r}
+
+boxcox_df <- data.frame(matrix(vector(), nrow = 196, ncol = 17))
+boxcox_df$Artist_Follower <- Artist_Follower_trans
+boxcox_df$Artist_Popularity <- Artist_Popularity_trans
+boxcox_df$Artist_Singles_Number <- Artist_Singles_Number_trans
+boxcox_df$Artist_Singles_Tracks_Number <- Artist_Singles_Tracks_Number_trans
+boxcox_df$Track_Duration_ms <- Track_Duration_ms_trans
+boxcox_df$Track_Popularity <- Track_Popularity_trans
+boxcox_df$acousticness <- acousticness_trans
+boxcox_df$danceability <- danceability_trans
+boxcox_df$energy <- energy_trans
+boxcox_df$instrumentalness <- instrumentalness_trans
+boxcox_df$liveness <- liveness_trans
+boxcox_df$loudness <- loudness_trans
+boxcox_df$speechiness <- speechiness_trans
+boxcox_df$tempo <- tempo_trans
+boxcox_df$valence <- valence_trans
+boxcox_df$likeCount <- likeCount_trans
+boxcox_df$viewsCount <- viewsCount_trans
+
+drop.cols <- c('X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17')
+
+boxcox_df <- dplyr::select(boxcox_df, -one_of(drop.cols))
+
+par(mfrow=c(1,1))
+
+palette <- c('red', 'blue', 'black', 'purple')
+# palette <- rainbow(length(levels(as.factor(x$Genre))))
+my_colors <- palette[as.numeric(x$Genre)]
+
+plot(Artist_Follower_trans, Artist_Popularity_trans, main = paste("Box-Cox transformed, R^2=", round(summary(lm2)$r.squared, digits =2)), xlab = "Artist_Follower", ylab = "Artist_Popularity", col = my_colors, pch = 16)
+legend("bottomright", legend = levels(as.factor(x$Genre)), col = palette, pch = 16)
+
+library("lattice")
+xyplot(Artist_Popularity_trans~Artist_Follower_trans|x$Genre, pch=19, xlab = 'viewsCount (transformed)', ylab = 'Artist_Popularity (transformed)', main = "Biplot")
+
+# pairs(boxcox_df)
+
+sunflower_Artist_pop <- 2*round(boxcox_df$Artist_Popularity/2)
+sunflower_viewsCount  <- 2*round(boxcox_df$viewsCount/2)
+sunflowerplot(sunflower_Artist_pop~sunflower_viewsCount, xlab = 'viewsCount (transformed)', ylab = 'Artist_Popularity (transformed)', main = 'Sunflower plot')
+
+require("MASS")
+parcoord(boxcox_df, var.label = FALSE)
+
+
+#library("lattice")
+#parallelplot(boxcox_df, horizontal.axis=T)
+
+#library("ggplot2")
+#library("GGally")
+#ggparcoord(boxcox_df) + geom_line()
+
+library("andrews")
+andrews(boxcox_df, ymax=7)
+
+audio_features <- c('acousticness' , 'danceability' ,'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
+
+selected_columns <- dplyr::select(boxcox_df, audio_features)
+
+parcoord(selected_columns , col= my_colors, var.label = FALSE, ... = par(las=2, mar = c(8,1,3,1), xpd=TRUE))
+# title("Parallel coordinates", line = 0.6, adj = 0.1)
+legend("topright", inset=c(0.035,-0.08),legend = c('Classic', 'Techno', 'Pop', 'Hip Hop'), col = unique(my_colors),
+  bty = 'o', horiz = TRUE, pch = 15)
+
+ax <- selected_columns
+ax$clr <- x$Genre
+andrews(ax, ymax=4, clr=10)
+legend("topright",legend=levels(ax$clr), fill=rainbow(length(levels(as.factor(ax$clr)))))
+
+library("scagnostics")
+
+sub_df <- as.data.frame(x[, var_list])
+
+s <- scagnostics(sub_df)
+o <- scagnosticsOutliers(s)
+g <- scagnosticsGrid(s)
+
+go <- g[o,]
+
+# Outliers: strongly different from the other plots
+
+par(mfrow=c(1,1))
+
+for (i in 1:nrow(go)){
+plot(sub_df[[go[i,1]]], sub_df[[go[i,2]]], pch=19, xlab=names(sub_df)[go[i,1]], ylab=names(sub_df)[go[i,2]])
+print(paste("Outlying pair: ", "y=", names(sub_df)[go[i,2]], "x=", names(sub_df)[go[i,1]]))}
+
+# Highlights:
+
+par(mfrow=c(1,2))
+plot(x$Track_Duration_ms, x$instrumentalness, col = my_colors, pch = 16, xlab = 'Track_Duration_ms', ylab = 'instrumentalness')
+plot(x$instrumentalness, x$valence, col = my_colors, pch = 16,  xlab = 'instrumentalness', ylab = 'valence')
+legend(x=-1300, y=1250, legend = levels(as.factor(x$Genre)), col = palette, pch = 16, horiz = TRUE, xpd = NA)
+
+
+
+# Exemplars: group of similar plots
+
+e <- scagnosticsExemplars(s)
+
+ge <- g[e,]
+
+par(mfrow = c(2,2))
+
+for (i in 1:dim(ge)[1]){
+  plot(sub_df[[ge$x[i]]], sub_df[[ge$y[i]]], pch=19,
+  xlab=names(sub_df)[ge$x[i]], ylab=names(sub_df)[ge$y[i]])
+  print(paste("Exemplary pair: ", "y=", names(sub_df)[ge$y[i]], "x=", names(sub_df)[ge$x[i]]))
+}
+
+```
+
+```{r}
+
+table(x$Genre)
+
+x$Artist_Popularity_quantile <- 0
+
+Artist_Popularity_quantiles <- quantile(x$Artist_Popularity, probs = c(0.25, 0.5, 0.75))
+
+Artist_Pop_q_25 <- Artist_Popularity_quantiles[1]
+Artist_Pop_median <- Artist_Popularity_quantiles[2]
+Artist_Pop_q_75 <- Artist_Popularity_quantiles[3]
+
+x$Artist_Popularity_quantile <- ifelse(x$Artist_Popularity < Artist_Pop_q_25, 1, x$Artist_Popularity_quantile + 0)
+
+x$Artist_Popularity_quantile <- ifelse(((x$Artist_Popularity >= Artist_Pop_q_25) & (x$Artist_Popularity < Artist_Pop_median)), 2, x$Artist_Popularity_quantile + 0)
+
+x$Artist_Popularity_quantile <- ifelse(((x$Artist_Popularity >= Artist_Pop_median) & (x$Artist_Popularity < Artist_Pop_q_75)), 3, x$Artist_Popularity_quantile + 0)
+
+x$Artist_Popularity_quantile <- ifelse((x$Artist_Popularity >= Artist_Pop_q_75), 4, x$Artist_Popularity_quantile + 0)
+x$Artist_Popularity_quantile <- as.factor(x$Artist_Popularity_quantile)
+
+tab<-table(x$Genre, x$Artist_Popularity_quantile)
+tab
+
+# r = 4, c = 4
+#df = (r-1)*(c-1) = 3+3 = 9
+# critical value: 16.919
+
+
+chisq.test(tab)
+chisq.test(tab, simulate.p.value = TRUE)
+
+
+
+library("vcd")
+assocstats(tab)
+
+library("openintro")
+
+contTable(tab)
+
+```
+
+```{r}
+
+x$viewsCount_quantile <- 0
+
+viewsCount_quantiles <- quantile(x$viewsCount, probs = c(0.25, 0.5, 0.75))
+
+viewsCount_q_25 <- viewsCount_quantiles[1]
+viewsCount_median <- viewsCount_quantiles[2]
+viewsCount_q_75 <- viewsCount_quantiles[3]
+
+x$viewsCount_quantile <- ifelse(x$viewsCount < viewsCount_q_25, 1, x$viewsCount_quantile + 0)
+
+x$viewsCount_quantile <- ifelse(((x$viewsCount >= viewsCount_q_25) & (x$viewsCount < viewsCount_median)), 2, x$viewsCount_quantile + 0)
+
+x$viewsCount_quantile <- ifelse(((x$viewsCount >= viewsCount_median) & (x$viewsCount < viewsCount_q_75)), 3, x$viewsCount_quantile + 0)
+
+x$viewsCount_quantile <- ifelse((x$viewsCount >= viewsCount_q_75), 4, x$viewsCount_quantile + 0)
+x$viewsCount_quantile <- as.factor(x$viewsCount_quantile)
+
+
+tab<-table(x$viewsCount_quantile, x$Artist_Popularity_quantile)
+tab
+
+chisq.test(tab)
+chisq.test(tab, simulate.p.value = TRUE)
+
+library("vcd")
+assocstats(tab)
+
+contTable(tab)
+
+```
+
+```{r}
+
+ab2 <- na.omit(cbind(x$Artist_Popularity_quantile, x$viewsCount_quantile))
+nrow(ab2)*(nrow(ab2)-1)/2
+#
+ind <- order(ab2[,1], ab2[,2])
+ab2 <- ab2[ind,]
+#b
+C <- D <- Tx <- Ty <- Txy <- 0
+for (i in 1:(nrow(ab2)-1)) {
+  if (i%%100==0) cat(i, "\n")
+  for(j in (i+1):nrow(ab2)) {
+    if (ab2[i,1]==ab2[j,1]) {
+      if (ab2[i,2]==ab2[j,2]) {
+        Txy <- Txy+1
+      } else {
+        Tx <- Tx+(ab2[i,2]<ab2[j,2])
+      }
+    } else {   
+      if (ab2[i,2]==ab2[j,2]) Ty <- Ty+1
+      if (ab2[i,2]<ab2[j,2]) C <- C+1
+      if (ab2[i,2]>ab2[j,2]) D <- D+1
+    }
+  }
+}
+
+c(C=C, D=D, Tx=Tx, Ty=Ty, Txy=Txy)
+
+k_t <- (C - D)/(nrow(ab2)*(nrow(ab2)-1)/2)
+k_t # (without ties)
+
+library("ryouready")
+ord.tau(table(ab2[,1], ab2[,2]))
+
+cor(as.numeric(x$Artist_Popularity_quantile), as.numeric(x$viewsCount_quantile), method = "kendall") # identical result
+
+cor.test(as.numeric(x$Artist_Popularity_quantile), as.numeric(x$viewsCount_quantile), method="kendall")
+
+
+
+
+
+
+```
+
+```{r}
+
+modetab <- function(x, margin=0) { 
+  if (margin>0) apply(x, margin, max) else max(x) 
+}
+
+tab2 <- table(x$Artist_Popularity_quantile, 
+              x$Genre, dnn = c("Artist Popularity quantile", "Genre"))
+
+tab2
+
+contTable(tab2)
+
+
+tab <- rowSums(tab2)
+
+message(paste("The mode across all four quantiles of stream distribution is", modetab(tab), " and is in the 4th quantile. So the best prediction for a new artist without further knowledge is that she will fall in the top quantile of the popularity distribution."))
+
+e1_streams <- sum(tab) - modetab(tab)
+
+message(paste("Without any knowledge about an additional feature other than artist popularity quantile itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab)*100, "%."))
+
+e2_streams <- sum(tab2) - sum(modetab(tab2, 2))
+
+message(paste("Now having knowledge about an association between artist popularity and its genre and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab)*100, "%, which is already much lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2)*100, "% would have been predicted correctly (compared to ", (1-e1_streams/sum(tab))*100, "% if there was no knowledge about genre.)"))
+
+
+lambda <- (e1_streams - e2_streams)/e1_streams
+
+message(paste("Therefore, Goodmann and Kruskals Lambda is: ", lambda))
+
+library("ryouready")
+
+nom.lambda(tab2)
+
+
+```
+
+
+
+```{r}
+
+
+modetab <- function(x, margin=0) { 
+  if (margin>0) apply(x, margin, max) else max(x) 
+}
+
+tab2 <- table(x$Artist_Popularity_quantile, 
+              x$viewsCount_quantile, dnn = c("Artist Popularity quantile", "viewsCount quantile"))
+
+tab2
+
+tab <- rowSums(tab2)
+
+message(paste("The mode across all four quantiles of stream distribution is", modetab(tab), " and is in the 4th quantile. So the best prediction for a new artist without further knowledge is that she will fall in the top quantile of the popularity distribution."))
+
+e1_streams <- sum(tab) - modetab(tab)
+
+message(paste("Without any knowledge about an additional feature other than artist popularity quantile itself and using the mode across classes as best predictor for class assignment for a new observation, the number of falsely predicted cases would be: ", e1_streams, " or ", e1_streams/sum(tab)*100, "%."))
+
+e2_streams <- sum(tab2) - sum(modetab(tab2, 2))
+
+message(paste("Now having knowledge about an association between artist popularity and its viewsCount quantile and using class-internal modes for the additional feature, the number of falsely predicted cases would be: ", e2_streams, " or ", e2_streams/sum(tab)*100, "%, which is already much lower compared to the error rate from predicting without any knowledge about an association. On the other hand, ", sum(tab2)-e2_streams, " or ", (sum(tab2)-e2_streams)/sum(tab2)*100, "% would have been predicted correctly (compared to ", (1-e1_streams/sum(tab))*100, "% if there was no knowledge about viewsCount quantile.)"))
+
+
+lambda <- (e1_streams - e2_streams)/e1_streams
+
+message(paste("Therefore, Goodmann and Kruskals Lambda is: ", lambda))
+
+library("ryouready")
+
+nom.lambda(tab2)
+
+
+```
+
+ANOVA
+
+```{r}
+
+fit <- aov(Artist_Popularity~Genre , data =x)
+summary(fit)
+
+
+ks.test(x$Artist_Popularity[x$Genre == 'Classic'], "pnorm", mean = mean (x$Artist_Popularity[x$Genre == 'Classic']) , sd=sd(x$Artist_Popularity[x$Genre == 'Classic']))$statistic
+1.3581 / sqrt (length(x$Artist_Popularity[x$Genre == 'Classic']))
+
+ks.test(x$Artist_Popularity[x$Genre == 'Techno'], "pnorm", mean = mean (x$Artist_Popularity[x$Genre == 'Techno']) , sd=sd(x$Artist_Popularity[x$Genre == 'Techno']))$statistic
+1.3581 / sqrt (length(x$Artist_Popularity[x$Genre == 'Techno']))
+
+ks.test(x$Artist_Popularity[x$Genre == 'Hip Hop'], "pnorm", mean = mean (x$Artist_Popularity[x$Genre == 'Hip Hop']) , sd=sd(x$Artist_Popularity[x$Genre == 'Hip Hop']))$statistic
+1.3581 / sqrt (length(x$Artist_Popularity[x$Genre == 'Hip Hop']))
+
+ks.test(x$Artist_Popularity[x$Genre == 'Pop'], "pnorm", mean = mean (x$Artist_Popularity[x$Genre == 'Pop']) , sd=sd(x$Artist_Popularity[x$Genre == 'Pop']))$statistic
+1.3581 / sqrt (length(x$Artist_Popularity[x$Genre == 'Pop']))
+
+leveneTest (Artist_Popularity~Genre, data =x)
+varq <- tapply(x$Artist_Popularity, x$Genre, var, na.rm= TRUE)
+varq/min(varq)
+
+
+```
+
+PCA
+
+```{r}
+
+audio_features <- c('acousticness' , 'danceability' ,'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
+x_features <- dplyr::select(x, audio_features)
+z <- scale(x_features)
+eigen_cor <- eigen(cov(z))
+E <- eigen_cor$vectors
+pc_cor <- prcomp(z, center = F, scale = F)
+plot(pc_cor, main="Scree plot as bar chart (cor)")
+plot(pc_cor$sdev^2, type="b", main="Scree plot (cor)")
+
+pc_index <- c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6", "PC7", "PC8", "PC9")
+eigen_values <- round(eigen_cor$values, digits = 2)
+variance_explained <- round(eigen_cor$values/length(audio_features), digits = 2)
+cum_variance <- round(cumsum(eigen_cor$values)/length(audio_features), digits = 2)
+eigen_df <- data.frame(pc_index, eigen_values, variance_explained, cum_variance)
+colnames(eigen_df) <- c("PC", "Eigen value", "Variance explained", "Cumulative variance explained")
+
+
+
+
+as.data.frame(E)
+E[,1] <- E[,1]*-1
+E[,3] <- E[,3]*-1
+E[,4] <- E[,4]*-1
+E[,5] <- E[,5]*-1
+E[,6] <- E[,6]*-1
+as.data.frame(E)
+
+scores <- z %*% E
+
+library(corrplot)
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+#par(mfrow=c(1,1))
+#plot((pc_cor$sdev^2)/round(sum(pc_cor$sdev^2))*100, type="b", xlab = "Number of components", ylab = "Percentage of variance explained")
+
+corrplot(pc_cor$rotation, method="color", col=col(200), 
+        addCoef.col = "black", # Add coefficient of correlation
+        tl.col="black", tl.srt=90, #Text label color and rotation
+         diag=TRUE, mar = c(0,0,5,5), title = 'PCA - loadings matrix')
+
+
+
+
+plot(scores[,1], scores[,2])
+plot(pc_cor$x[,1], pc_cor$x[,2]) # both plots are identical
+
+library("psych")
+psych_pca <- psych::principal(z, nfactors = 9, rotate = "none")
+scree(z)
+
+# psych_pca$scores[,1]*sqrt(psych_pca$values[1]) # == scores[,1]
+
+# transform loadings of psych::principal to unit-length eigenvectors according to 1/sqrt(a^2 + b^2) * (a,b)
+# 1/sqrt(sum(psych_pca$loadings[,1]^2))*psych_pca$loadings[,1] # is identical to pc_cor$rotation[,1] and E[,1]
+
+# transforming unit-length eigenvectors to loadings like in psych::principal:
+
+manual_loadings <- matrix(nrow = dim(z)[2], ncol = dim(z)[2])
+
+for (i in 1:dim(z)[2]){
+  
+  manual_loadings[,i] <- E[,i] * sqrt(eigen_cor$values[i])
+  
+}
+
+# Still signs are interchanged, affected components are 3 and 9, change signs manually
+
+manual_loadings[,3] <- manual_loadings[,3]*-1
+manual_loadings[,9] <- manual_loadings[,9]*-1
+
+# Scores in psych are computed according to 
+
+(z %*% E[,1]) / sqrt(eigen_cor$values[1]) #  == psych_pca$scores[,1]
+
+# i.e. using the unit-length eigenvectors and dividing them by the square root of the corresponding eigenvalue
+
+par(mfrow=c(1,2))
+biplot(pc_cor) # loadings plot with loadings scaled to fit in same graph with scores
+plot(pc_cor$rotation[, 1:2]) # loadings in original measures
+text(pc_cor$rotation[, 1:2], as.character(colnames(z)), pos = 1, cex = 0.7, offset = 0.1)
+
+#palette <- rainbow(length(levels(as.factor(x$Genre))))
+#my_colors <- palette[as.numeric(x$Genre)]
+
+palette <- c('red', 'blue', 'black', 'purple')
+# palette <- rainbow(length(levels(as.factor(x$Genre))))
+my_colors <- palette[as.numeric(x$Genre)]
+
+par(mfrow=c(1,1))
+plot(scores[, 1:2], col = my_colors, pch = 19, xlab = "Scores PC1", ylab = "Scores PC2")
+legend("topleft", legend = levels(as.factor(x$Genre)), col = palette, pch = 16, horiz = T)
+#plot(pc_cor$rotation[, 1:2])
+par(mfrow=c(1,1))
+plot(E[, 1:2])
+text(E[, 1:2], as.character(colnames(z)), pos = 1, cex = 0.7, offset = 0.1)
+
+cumsum(eigen_cor$values)/length(audio_features)
+# According to the 90% criterion there would be 5 components needed to appropriately retain the variance in the data by reducing the feature space from nine to five.
+
+RMSE = function(m, o){
+  
+  sqrt(mean((m - o)^2))
+  
+}
+
+# All expressions for the scores are identical
+
+scores <- z %*% E
+scores_from_psych <- (z %*% (1/sqrt(sum(psych_pca$loadings[,1]^2))*psych_pca$loadings[,1])) / sqrt(psych_pca$values[1]) # == psych_pca$scores[,1]
+scores_from_princomp <- (z %*% pc_cor$rotation[,1]) / sqrt(eigen_cor$values[1])
+
+fits <- matrix(nrow = dim(z)[2], ncol = 3)
+
+for (i in 1:dim(z)[2]){
+  
+  num_comp <- i
+  fit <- scores[, 1:num_comp] %*% t(E[, 1:num_comp])
+  residuals <- z - fit
+  rmse <- RMSE(z, fit)
+  r2 <- 1-(sum(diag(var(residuals)))/ sum(diag(var(z))))
+  
+  fits[i,1] <- num_comp
+  fits[i,2] <- rmse
+  fits[i,3] <- r2
+  
+}
+
+par(mfrow=c(1,1))
+plot(fits[,1], fits[,2], type = "l", ylab = 'RMSE', xlab = 'Number of components')
+par(new = TRUE)
+plot(fits[,1], fits[,3], type = "l", axes = FALSE, bty = "n", xlab = "", ylab = "")
+axis(side=4, at = pretty(range(fits[,3])))
+mtext("R^2", side = 4, line = -1)
+abline(v = 2, lty = 2, col = 'green')
+mtext("Kaiser criterion", side = 1, line = 2, adj = 0.1)
+abline(v=min(which(fits[,3]>=0.9)), lty = 2, col = 'red')
+mtext("90% rule", side = 1, line = 1, adj = 0.5)
+
+# Squared prediction errors / Q-residuals
+
+par(mfrow=c(1,1))
+
+a <- 1
+Xhat <- pc_cor$x[,seq(1,a)] %*% t(pc_cor$rotation[,seq(1,a)])
+RMSE(z, Xhat)
+res <- z - Xhat
+E2 <- res * res
+SPE_1 <- apply(E2, 1, sum) # not using sqrt(apply(E2, 1, sum))!
+
+# Box (1954) method: weighted Chi-squared
+
+v <- var(SPE_1)
+m <- mean(SPE_1)
+h <- (2*m^2)/v
+g <- v / (2*m)
+lim_k1_95 <- g*qchisq(.95, df=h) 
+plot(SPE_1, ylab = paste('SPE after using', a, 'component'), xlab = 'index')
+abline(h = lim_k1_95, lty = 2, col = 'darkgreen')
+mtext(paste('RMSE =', round(sqrt(mean(SPE_1)), digits = 4)), side=1, line=3.5, at=9)
+sqrt(mean(SPE_1))
+
+
+a <- 2
+Xhat <- pc_cor$x[,seq(1,a)] %*% t(pc_cor$rotation[,seq(1,a)])
+RMSE(z, Xhat)
+res <- z - Xhat
+E2 <- res * res
+#SPE_2 <- sqrt(apply(E2, 1, sum))
+SPE_2 <- apply(E2, 1, sum)
+# pca(z, ncomp = a, center = FALSE, scale = FALSE, alpha = 0.05)$Qlim[1]
+
+v <- var(SPE_2)
+m <- mean(SPE_2)
+h <- (2*m^2)/v
+g <- v / (2*m)
+lim_k2_95 <- g*qchisq(.95, df=h) 
+plot(SPE_2, ylab = paste('SPE after using', a, 'components'), xlab = 'index')
+abline(h = lim_k2_95, lty = 2, col = 'darkgreen')
+mtext(paste('RMSE =', round(sqrt(mean(SPE_2)), digits = 4)), side=1, line=3.5, at=9)
+sqrt(mean(SPE_2))
+
+
+a <- 9
+Xhat <- pc_cor$x[,seq(1,a)] %*% t(pc_cor$rotation[,seq(1,a)])
+RMSE(z, Xhat)
+res <- z - Xhat
+E2 <- res * res
+# SPE_9 <- sqrt(apply(E2, 1, sum))
+SPE_9 <- apply(E2, 1, sum)
+# pca(z, ncomp = a, center = FALSE, scale = FALSE, alpha = 0.05)$Qlim[1]
+
+v <- var(SPE_9)
+m <- mean(SPE_9)
+h <- (2*m^2)/v
+g <- v / (2*m)
+lim_k9_95 <- g*qchisq(.95, df=h) 
+plot(SPE_9, ylab = paste('SPE after using', a, 'components'), xlab = 'index')
+abline(h = lim_k9_95, lty = 2, col = 'darkgreen')
+mtext(paste('RMSE =', round(sqrt(mean(SPE_9)), digits = 4)), side=1, line=3.5, at=9)
+sqrt(mean(SPE_9))
+
+
+par(mfrow=c(3,1))
+
+plot(SPE_1, type = 'l', col = 'darkgreen', ylab = "SPE for PC1")
+abline(h = lim_k1_95, lty = 2, col = 'darkgreen')
+plot(SPE_2, type = 'l', col = 'red', ylab = "SPE for PC1 + PC2")
+abline(h = lim_k2_95, lty = 2, col = 'darkgreen')
+plot(SPE_9, type = 'l', col = 'blue', ylab = "SPE for all PCs")
+abline(h = lim_k9_95, lty = 2, col = 'darkgreen')
+
+sum(SPE_1 > lim_k1_95)
+sum(SPE_1 > lim_k1_95)/length(SPE_1)
+
+sum(SPE_2 > lim_k2_95)
+sum(SPE_2 > lim_k2_95)/length(SPE_2)
+
+sum(SPE_9 > lim_k9_95)
+sum(SPE_9 > lim_k9_95)/length(SPE_9)
+
+```
+
+Hotelling's T^2
+
+```{r}
+
+
+num_comp <- 2
+
+inverse_cov <- diag(eigen_cor$values[1:num_comp], nrow = num_comp, ncol = num_comp)^-1
+inverse_cov[is.infinite(inverse_cov)] <- 0
+
+tsquared <- diag(z %*% E[,1:num_comp] %*% inverse_cov %*% t(z %*% E[,1:num_comp]))
+
+# which is equivalent to the Mahalanobis distance: (for k > 1)
+
+tsquared_mahal <- mahalanobis(scores[,1:num_comp], center = FALSE, cov(cbind(scores[,1], scores[,num_comp])), inverted = FALSE)
+tsquared_lim95 <- (((dim(z)[1] - 1) * (dim(z)[1] + 1) * num_comp) / (dim(z)[1] * (dim(z)[1] - num_comp))) * qf(p =.95, df1 = num_comp, df2 = dim(z)[1] - num_comp)
+tsquared_lim99 <- (((dim(z)[1] - 1) * (dim(z)[1] + 1) * num_comp) / (dim(z)[1] * (dim(z)[1] - num_comp))) * qf(p =.99, df1 = num_comp, df2 = dim(z)[1] - num_comp)
+
+par(mfrow=c(1,1))
+
+plot(tsquared, type = 'l', ylim = c(0,tsquared_lim99*1.1), ylab = "Hotelling's T2")
+abline(h=tsquared_lim99, col = 'red', lty = 2)
+text(190,10, "99% limit", col = "red")
+abline(h=tsquared_lim95, col = 'darkgreen', lty = 2)
+text(190,6.6, "95% limit", col = "darkgreen")
+
+# source: https://github.com/hredestig/pcaMethods/blob/master/R/pca.R
+
+simpleEllipse <- function(x, y, alfa=0.95, len=200) {
+  N <- length(x)
+  A <- 2
+  mypi <- seq(0, 2 * pi, length=len)
+  r1 <- sqrt(var(x) * qf(alfa, 2, N - 2) * (2*(N^2 - 1)/(N * (N - 2))))
+  r2 <- sqrt(var(y) * qf(alfa, 2, N - 2) * (2*(N^2 - 1)/(N * (N - 2))))
+  cbind(r1 * cos(mypi) + mean(x), r2 * sin(mypi) + mean(y))
+}
+
+
+confidence_ellipse95 <- simpleEllipse(scores[,1], scores[,2], alfa = 0.95, len=500)
+confidence_ellipse99 <- simpleEllipse(scores[,1], scores[,2], alfa = 0.99, len=500)
+
+plot(scores[,1], scores[,2], xlim = c(min(confidence_ellipse99[,1]), max(confidence_ellipse99[,1])), 
+     ylim = c(min(confidence_ellipse99[,2]), max(confidence_ellipse99[,2])), ylab = 'Scores PC2', xlab = 'Scores PC1')
+abline(h = 0, v = 0)
+points(confidence_ellipse95, type = 'l', lty = 2, col = 'darkgreen')
+points(confidence_ellipse99, type = 'l', lty = 2, col = 'red')
+
+x[as.numeric(names(tsquared[tsquared > tsquared_lim95])),c('Track_Title', 'Track_Artist', 'Genre')]
+
+outlier_tracks <- x[as.numeric(names(tsquared[tsquared > tsquared_lim95])),c('Track_Title', 'Track_Artist', 'Genre')]
+round(z[as.numeric(names(tsquared[tsquared > tsquared_lim95])),], digits = 2)
+audio_z <- as.data.frame(z[as.numeric(names(tsquared[tsquared > tsquared_lim95])),])
+outlier_tracks$acousticness <- audio_z$acousticness
+outlier_tracks$danceability <- audio_z$danceability
+outlier_tracks$energy <- audio_z$energy
+outlier_tracks$instrumentalness <- audio_z$instrumentalness
+outlier_tracks$liveness <- audio_z$liveness
+outlier_tracks$loudness <- audio_z$loudness
+outlier_tracks$speechiness <- audio_z$speechiness
+outlier_tracks$tempo <- audio_z$tempo
+outlier_tracks$valence <- audio_z$valence
+
+# Finally, combining residuals and scores (i.e. Hotelling's T^2)
+
+# cumsum(pc_cor$sdev^2 / sum(pc_cor$sdev^2))[num_comp]
+
+plot(tsquared, SPE_2, 
+     xlab = paste("Hotelling's T2 (", round(cumsum(pc_cor$sdev^2 / sum(pc_cor$sdev^2))[num_comp]*100, digits = 2), "%)"),
+     ylab = paste("Q-residuals (", round((1-cumsum(pc_cor$sdev^2 / sum(pc_cor$sdev^2))[num_comp])*100, digits = 2), "%)"))
+abline(h = lim_k2_95, lty = 2, col = 'darkgreen') # seven residual outliers
+abline(v = tsquared_lim95, lty = 2, col = 'darkgreen') #  two score outliers
+
+library("robustbase")
+out <- adjOutlyingness(z, ndir=5000, clower=0, cupper=0)
+hist(out$adjout)
+rug(out$adjout)
+z[!out$nonOut,]#  as we can confirm, the outlying cases differ strongly in their characteristics from their respective                         centers, that is especially liveness and energy are inconsistent with the model
+
+x[rownames(z[!out$nonOut,]),c("Track_Title", "Track_Artist", "Genre", "Track_Popularity")]
+
+library("paran")
+paran(z, centile=95, all=T, graph=T)
+
+x$pc_1 <- pc_cor$x[,1]
+x$pc_2 <- pc_cor$x[,2]
+
+```
+
+```{r}
+
+x$Release_Date <- as.Date(paste(x$Release_Date, 1, 1, sep = "-"))
+x$days_release_orig <- as.integer(round(difftime('2020-03-01', x$Release_Date, units = "days"), digits = 0))
+x$Release_Date <- NULL
+x$days_release <- as.numeric(scale(x$days_release_orig))
+
+
+drop.cols <- c('Artist_ID', 'Genre', 'Track_Artist','Track_ID', 'Track_Title', 'key',
+               'mode', 'time_signature', 'video_ID', 'Charts', 'acousticness', 'danceability', 'energy', 'instrumentalness',
+               'liveness', 'loudness', 'speechiness', 'tempo', 'valence', 'Artist_Popularity', 'Track_Popularity', 'Artist_Popularity_quantile', 'viewsCount_quantile', 'days_release_orig', 'pc_1', 'pc_2')
+
+x_sel <- dplyr::select(x, -one_of(drop.cols))
+complete_index <- as.numeric(rownames(x_sel))
+
+z <- scale(x_sel)
+
+# inverse and partial correlations
+p  <- solve(cor(z, use="complete.obs"))
+
+# if the model holds then the non-diagonal elements of R􀀀1
+# must be close to zero (relative to the diagonal element)
+
+levelplot(p, scales=list(x=list(rot=90)))
+
+# Partial correlations
+pr <- -p/sqrt(outer(diag(p), diag(p)))
+levelplot(pr, scales=list(x=list(rot=90)))
+
+KMO(z)
+# result: 0.74 overall: middling, every individual MSA value is as least as high as 0.53 (middling)
+
+cortest.bartlett(z) # result: correlation matrix is NOT an identity matrix, so proceed with factor analysis
+
+scree(z)
+
+library("paran")
+paran(z, centile=95, all=T, graph=T) # four factors are appropriate
+
+
+```
+
+Loadings
+
+```{r}
+
+pca <- principal(z, nfactors=4, rotate="none") # h2 are "communalities"
+pa <- fa(z, nfactors=4, rotate="none", fm="pa") # principal axis extraction
+uls <- fa(z, nfactors=4, rotate="none")
+ml <- fa(z, nfactors=4, rotate="none", fm="ml")
+library("xtable")
+# xtable(unclass(ml$loadings))
+print(ml$loadings, sort = T)
+print(ml$loadings, cutoff=.4, sort = T)
+
+set.seed(42)
+ml.varimax <- fa(z, nfactors=4, rotate="varimax", fm="ml") 
+print(ml.varimax$loadings, cutoff=.4, sort = T)
+# xtable(unclass(ml.varimax$loadings))
+
+fa.congruence(ml, ml.varimax)
+
+
+par(mfrow=c(1,1))
+
+threshold <- 0.4
+plot(ml.varimax$loadings[,1], ml.varimax$loadings[,2], xlim = c(-1, 1), ylim = c(-1,1.1), xlab = 'ML2', ylab = 'ML3')
+palette <- c('red', 'blue')
+col_index <- ifelse((abs(ml.varimax$loadings[,1]) > threshold) | (abs(ml.varimax$loadings[,2]) > threshold), 1, 0)
+cols <- palette[as.numeric(as.factor(col_index))]
+points(ml.varimax$loadings[,1], ml.varimax$loadings[,2], pch=19, col=cols)
+abline(h = 0, v= 0)
+text(ml.varimax$loadings[,1:2], as.character(rownames(ml.varimax$loadings)), pos = 1, cex = 0.6, offset = 0.5)
+rect(xleft = -threshold, ybottom = -threshold, xright = threshold, ytop = threshold)
+# fa.diagram(ml.varimax, simple=TRUE, cut=.2, digits=2)
+set.seed(42)
+ml.promax <- fa(z, nfactors=4, rotate="promax", fm="ml")
+fa.congruence(ml.promax, ml.varimax)
+
+ml.promax$Phi
+print(ml.promax$loadings, cutoff=.4, sort = T)
+#xtable(unclass(ml.promax$loadings))
+
+print(ml.promax$Structure, cutoff = 0.4)
+
+# For orthoghonal rotations: cor(item, factor) = loadings ("pattern") matrix = structure matrix, 
+# since structure matrix = loadings matrix *%* factor intercorrelation matrix (which is identity for orthogonal rotations)
+# example: ml.promax$loadings %*% ml.promax$Phi = structure matrix
+
+
+par(mfrow=c(1,1))
+
+threshold <- 0.5
+plot(ml.promax$Structure[,1], ml.promax$Structure[,2], xlim = c(-1, 1), ylim = c(-1,1.1), xlab = 'ML2', ylab = 'ML3')
+palette <- c('red', 'blue')
+col_index <- ifelse((abs(ml.promax$Structure[,1]) > threshold) | (abs(ml.promax$Structure[,2]) > threshold), 1, 0)
+cols <- palette[as.numeric(as.factor(col_index))]
+points(ml.promax$Structure[,1], ml.promax$Structure[,2], pch=19, col=cols)
+abline(h = 0, v= 0)
+text(ml.promax$Structure[,1:2], as.character(rownames(ml.promax$Structure)), pos = 1, cex = 0.6, offset = 0.5)
+rect(xleft = -threshold, ybottom = -threshold, xright = threshold, ytop = threshold)
+
+
+
+fa1 <-factanal(z, factors=4, scores = 'regression', lower = 0.1) # ML with Kaiser normalization 
+head(fa1$scores)
+fa2 <- fa(z, nfactors=4) # oblimin rotation without Kaiser normalization
+head(fa2$scores)
+cor(fa1$scores, fa2$scores)
+cor(fa1$scores, ml.promax$scores)
+cor(ml.promax$scores, ml.varimax$scores)
+
+fa_bartlett_scores <- fa(z, nfactors=4, rotate="varimax", fm="ml", scores = 'Bartlett')
+cor(ml.varimax$scores, fa_bartlett_scores$scores)
+cor(fa_bartlett_scores$scores)
+
+
+
+```
+
+```{r}
+
+# sum scores
+
+threshold <- 0.5
+
+vars_1 <- abs(ml.promax$Structure[,1])>threshold
+vars_2 <- abs(ml.promax$Structure[,2])>threshold
+vars_3 <- abs(ml.promax$Structure[,3])>threshold
+vars_4 <- abs(ml.promax$Structure[,4])>threshold
+
+key.list <- list(one = as.numeric(which(vars_1==1)), 
+                two = as.numeric(which(vars_2==1)), 
+                three = as.numeric(which(vars_3==1)), 
+                four = as.numeric(which(vars_4==1)))
+
+sign.mat <- cbind(sign(ml.promax$Structure[,1]), 
+                      sign(ml.promax$Structure[,2]),
+                      sign(ml.promax$Structure[,3]),
+                      sign(ml.promax$Structure[,4]))
+
+keys <- make.keys(z, key.list,item.labels = colnames(z))
+
+si <- scoreItems(keys * sign.mat, z) # these are the scores I finally use
+
+pairs(cbind(si$scores[,1], si$scores[,2], si$scores[,3], si$scores[,4]))
+cor(cbind(si$scores[,1], si$scores[,2], si$scores[,3], si$scores[,4]))
+
+print(ml.promax$loadings, cutoff = 0.5, sort = T)
+
+# I apply a threshold of 0.5 for manual computation of sum scores
+
+f2 <- (z[,11] + z[,12] + z[,13] + z[,14])/4 # commentCount, dislikeCount, likeCount, viewsCount
+f3 <- (z[,1] + z[,2] + z[,5])/3 # Artist_Albums_Number, Artist_Compilations_Number, Artist_Compilations_Tracks_Number
+f4 <- (z[,2] + z[,3] + z[,4])/3 # Artist_Albums_Tracks_Number, Artist_Appearances_Number, Artist_Appearances_Tracks_Number
+f1 <- (z[,8] + z[,9])/2 # Artist_Singles_Number, Artist_Singles_Tracks_Number
+
+pairs(cbind(f2, f3, f4, f1))
+cor(cbind(f2, f3, f4, f1))
+
+psych::alpha(cor(z[,vars_1]), check.keys = T) # commentCount, dislikeCount, likeCount, viewsCount
+psych::alpha(cor(z[,vars_2]), check.keys = T) # Artist_Albums_Number, Artist_Albums_Tracks_Number, Artist_Compilations_Number, Artist_Compilations_Tracks_Number, Artist_Singles_Number
+psych::alpha(cor(z[,vars_3]), check.keys = T) # Artist_Albums_Tracks_Number, Artist_Appearances_Number, Artist_Appearances_Tracks_Number, Track_Duration_ms 
+psych::alpha(cor(z[,vars_4]), check.keys = T) # Artist_Singles_Number, Artist_Singles_Tracks_Number
+
+items_1 <- reverse.code((keys[,1] * sign.mat[,1])[(keys[,1] * sign.mat[,1]) != 0], z[, vars_1])
+items_2 <- reverse.code((keys[,2] * sign.mat[,2])[(keys[,2] * sign.mat[,2]) != 0], z[, vars_2])
+items_3 <- reverse.code((keys[,3] * sign.mat[,3])[(keys[,3] * sign.mat[,3]) != 0], z[, vars_3])
+items_4 <- reverse.code((keys[,4] * sign.mat[,4])[(keys[,4] * sign.mat[,4]) != 0], z[, vars_4])
+
+library("additivityTests")
+
+tukey.test(items_1) # result: H0 rejected, i.e. sum score is insufficient to represent the variables (factor 2)
+tukey.test(items_2) # result: H0 rejected (factor 3)
+tukey.test(items_3) # result: H0 cannot be rejected (factor 4)
+tukey.test(items_4) # result: H0 cannot be rejected (factor 1)
+
+cor(ml.promax$scores, si$scores)
+fa_bartlett_scores <- fa(z, nfactors=4, rotate="promax", fm="ml", scores = 'Bartlett')
+cor(ml.promax$scores, fa_bartlett_scores$scores)
+cor(si$scores, fa_bartlett_scores$scores)
+cor(cbind(f2, f3, f4, f1), si$scores) # are almost identical now
+cor(cbind(f2, f3, f4, f1), fa_bartlett_scores$scores)
+cor(si$scores, fa_bartlett_scores$scores)
+
+# I choose the manually computed scoreItems and sum scores omitting <= 0.5 structure loadings and assigning the item with the larger loading to a single factor in case of ambiguity
+
+par(mfrow=c(1,2))
+hist(ml.promax$scores[,1], main = 'Youtube popularity factor', xlab = 'Score corresponding to factor 2 (promax)')
+rug(ml.promax$scores[ifelse(x[complete_index, 'Charts'] == 1, TRUE, FALSE), 1], col="blue")
+rug(ml.promax$scores[ifelse(x[complete_index, 'Charts'] != 1, TRUE, FALSE), 1], col="red")
+
+hist(ml.promax$scores[,2], main = 'Music supply factor', xlab = 'Score corresponding to factor 3 (promax)')
+rug(ml.promax$scores[ifelse(x[complete_index, 'Charts'] == 1, TRUE, FALSE), 2], col="blue")
+rug(ml.promax$scores[ifelse(x[complete_index, 'Charts'] != 1, TRUE, FALSE), 2], col="red")
+
+par(mfrow=c(1,2))
+hist(si$scores[,1], main = 'Youtube popularity factor', xlab = 'Score corresponding to factor 2 (promax)')
+rug(si$scores[ifelse(x[complete_index, 'Charts'] == 1, TRUE, FALSE), 1], col="blue")
+rug(si$scores[ifelse(x[complete_index, 'Charts'] != 1, TRUE, FALSE), 1], col="red")
+
+hist(si$scores[,2], main = 'Music supply factor', xlab = 'Score corresponding to factor 3 (promax)')
+rug(si$scores[ifelse(x[complete_index, 'Charts'] == 1, TRUE, FALSE), 2], col="blue")
+rug(si$scores[ifelse(x[complete_index, 'Charts'] != 1, TRUE, FALSE), 2], col="red")
+
+par(mfrow=c(1,2))
+hist(f2, main = 'Youtube popularity factor', xlab = 'Score corresponding to factor 2 (promax)')
+rug(f2[ifelse(x[complete_index, 'Charts'] == 1, TRUE, FALSE)], col="blue")
+rug(f2[ifelse(x[complete_index, 'Charts'] != 1, TRUE, FALSE)], col="red")
+
+hist(f3, main = 'Music supply factor', xlab = 'Score corresponding to factor 3 (promax)')
+rug(f3[ifelse(x[complete_index, 'Charts'] == 1, TRUE, FALSE)], col="blue")
+rug(f3[ifelse(x[complete_index, 'Charts'] != 1, TRUE, FALSE)], col="red")
+
+x$factor_2 <- si$scores[,1]
+x$factor_3 <- si$scores[,2]
+x$factor_4 <- si$scores[,3]
+x$factor_1 <- si$scores[,4]
+
+x$factor_2man <- f2
+x$factor_3man <- f3
+x$factor_4man <- f4
+x$factor_1man <- f1
+
+cor(cbind(si$scores[,1], si$scores[,2], si$scores[,3], si$scores[,4]), cbind(f2, f3, f4, f1))
+
+cor(cbind(si$scores[,1], si$scores[,2], si$scores[,3], si$scores[,4]), fa_bartlett_scores$scores)
+
+cor(cbind(si$scores[,1], si$scores[,2], si$scores[,3], si$scores[,4]), ml.promax$scores)
+
+x$factor_2bartlett <- fa_bartlett_scores$scores[,1]
+x$factor_3bartlett <- fa_bartlett_scores$scores[,2]
+x$factor_4bartlett <- fa_bartlett_scores$scores[,3]
+x$factor_1bartlett <- fa_bartlett_scores$scores[,4]
+
+```
+
+
+```{r}
+
+z <- scale(x_features)
+
+library(factoextra)
+
+# Elbow method
+fviz_nbclust(z, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2) + labs(title = "")
+
+set.seed(42)
+kz <- kmeans(z, c=4)
+
+k_techno <- names(kz$cluster[kz$cluster == 1])
+k_hiphop <- names(kz$cluster[kz$cluster == 2])
+k_pop <- names(kz$cluster[kz$cluster == 3])
+k_classic <- names(kz$cluster[kz$cluster == 4])
+
+kz$cluster[k_techno] <- 4
+kz$cluster[k_pop] <- 3
+kz$cluster[k_hiphop] <- 2
+kz$cluster[k_classic] <- 1
+
+par(mfcol=c(1,1))
+plot(pc_cor$x[,1], pc_cor$x[,2], col=kz$cluster, pch=19, xlab = 'PC1', ylab = 'PC2')
+
+# project cluster centers to PCA feature space:
+
+cluster_centers_pca <- kz$centers %*% pc_cor$rotation[, 1:2]
+points(cluster_centers_pca[,1], cluster_centers_pca[,2], col = 'magenta', pch = 10, cex = 3)
+
+plot(pc_cor$x[,1], pc_cor$x[,2], col=as.numeric(x$Genre), pch=19, xlab = 'PC1', ylab = 'PC2')
+
+library("cluster")
+
+sk_4 <- silhouette(kz$cluster, dist(z))
+plot(sk_4, col=1:4, border=NA, ann = T, main = "")
+
+library("caret")
+
+confusionMatrix(as.factor(as.numeric(kz$cluster)), as.factor(as.numeric(x$Genre)))
+
+# Although k-means is not a classification algorithm, we can compute the proportions of genres per cluster to assign
+# an interpretation for each cluster.
+
+tab_kmeans <- table(kz$cluster, x$Genre)
+#xtable(round(tab_kmeans/colSums(tab_kmeans), digits = 2)*100)
+round(tab_kmeans/colSums(tab_kmeans), digits = 2)*100
+
+# It seems that Classic music and Techno music can be accurately distinguished but between Hip Hop and Pop there are 
+# many false negatives, e.g. 62% of the tracks were predicted to be of the genre Pop although the truth was that they were
+# of class Hip Hop, underlining the ambiguity between those genres in terms of music theoretical characteristics nowadays.
+# Vice versa, 16% of the tracks predicted to be Hip Hop music were actually Pop music.
+
+
+
+
+
+```
+```{r}
+set.seed(42)
+cl2 <- pam(z, 4)
+plot(pc_cor$x[,1], pc_cor$x[,2], col=cl2$clustering)
+
+
+k_classic <- names(cl2$clustering[cl2$clustering == 1])
+k_techno <- names(cl2$clustering[cl2$clustering == 2])
+k_pop <- names(cl2$clustering[cl2$clustering == 3])
+k_hiphop <- names(cl2$clustering[cl2$clustering == 4])
+
+cl2$clustering[k_techno] <- 4
+cl2$clustering[k_pop] <- 3
+cl2$clustering[k_hiphop] <- 2
+cl2$clustering[k_classic] <- 1
+
+
+par(mfcol=c(1,1))
+plot(pc_cor$x[,1], pc_cor$x[,2], col=cl2$clustering, pch=19, xlab = 'PC1', ylab = 'PC2')
+points(pc_cor$x[rownames(cl2$medoids),1], pc_cor$x[rownames(cl2$medoids),2], col = 'magenta', pch = 10, cex = 3)
+
+plot(pc_cor$x[,1], pc_cor$x[,2], col=as.numeric(x$Genre), pch=19, xlab = 'PC1', ylab = 'PC2')
+
+# xtable(x[rownames(cl2$medoids), c('Track_Title', 'Track_Artist', 'Genre')])
+
+x[rownames(cl2$medoids), c('Track_Title', 'Track_Artist', 'Genre')]
+
+sm_4 <- silhouette(cl2$clustering, dist(z))
+plot(sm_4, col=1:4, border=NA, main = "")
+
+confusionMatrix(as.factor(as.numeric(cl2$clustering)), as.factor(as.numeric(x$Genre)))
+
+tab_kmedoids <- table(cl2$clustering, x$Genre)
+# xtable((round(tab_kmedoids/colSums(tab_kmedoids), digits = 2))*100)
+round(tab_kmedoids/colSums(tab_kmedoids), digits = 2)*100
+```
+
+```{r}
+
+# Factor analysis + k-means on scores
+
+library("psych")
+KMO(z)
+scree(z)
+library("paran")
+paran(z, centile=95, all=T, graph=T) # two factors are appropriate
+fa <- fa(z, nfactors=2, rotate="varimax")
+library("plot.matrix")
+plot(loadings(fa), las=1)
+al1 <- psych::alpha(z[,c("acousticness", "danceability", "energy", "loudness")], check.keys = TRUE)
+al1
+al2 <- psych::alpha(z[,c("instrumentalness", "valence")], check.keys = TRUE)
+al2
+scale <- cbind(al1$scores, al2$scores)
+
+fviz_nbclust(scale, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+
+reorder <- function(x, ...) {
+  dr <- dist(x)
+  hr <- hclust(dr)
+  dc <- dist(t(x))
+  hc <- hclust(dc)
+  x[hr$order, hc$order]
+}
+
+set.seed(42)
+cl1 <- kmeans(z, 4)
+set.seed(42)
+cl2 <- kmeans(scale, 4)
+
+print(reorder(table(cl1$cluster,cl2$cluster)))
+
+par(mfcol=c(1,3))
+
+plot(pc_cor$x[,1], pc_cor$x[,2], col=cl1$cluster, pch=19)
+plot(pc_cor$x[,1], pc_cor$x[,2], col=cl2$cluster, pch=19)
+plot(pc_cor$x[,1], pc_cor$x[,2], col=as.numeric(x$Genre), pch=19)
+
+par(mfcol=c(1,2))
+library("e1071")
+set.seed(42)
+cl1 <- cmeans(z, 4)
+mcolor <- colorRamp(c("black", "green", "blue", "red"))
+col <- rgb(mcolor(cl1$membership[,1]), max=255)
+plot(pc_cor$x[,1], pc_cor$x[,2], pch=19, col=col, main = 'Soft-clustering (fuzzy c-means, k = 4)')
+
+```
+```{r}
+
+cl  <- diana(z)
+hcl <- cutree(as.hclust(cl), k = 4)
+par(mfrow=c(1,1))
+plot(pc_cor$x[,1], pc_cor$x[,2], col=hcl, 
+     pch=19, cex=0.5)
+
+
+
+
+```
+
+```{r}
+
+library("proxy")
+
+d <- as.matrix(dist(z))
+heatmap(d)
+s <- pr_dist2simil(d) # the darker, the more similar
+heatmap(s)
+
+```
+
+```{r}
+
+par(mfcol=c(1,1))
+
+d <- dist(z)
+# hclust
+cl1 <- hclust(d, method = 'ward.D2')
+memb <- cutree(cl1, 4)
+plot(pc_cor$x[,1], pc_cor$x[,2], col=memb)
+plot(cl1, ann = F)
+title(xlab = "Ward.D2", ylab = "Height")
+```
+
+```{r}
+
+library("ggplot2")
+library("tibble")
+
+ggplot(cl1$height %>%
+as_tibble() %>%
+add_column(groups = length(cl1$height):1) %>%
+rename(height=value),
+aes(x=groups, y=height)) +
+geom_point() +
+geom_line()
+
+```
+```{r}
+
+library("mclust")
+set.seed(42)
+cl <- Mclust(z)
+summary(cl)
+par(mfrow=c(2,2))
+plot(cl, "BIC")
+plot(pc_cor$x[,1], pc_cor$x[,2], col = cl$classification)
+EM_density_plot <- plot(cl, "density")
+
+
+```
+
+```{r}
+
+par(mfcol=c(2,2))
+
+library("fpc")
+set.seed(42)
+cl <- dbscan(z, 0.5, scale=F, MinPts = 5)
+col <- c('grey', rainbow(max(cl$cluster)))
+plot(pc_cor$x[,1], pc_cor$x[,2], pch=19, col=col[1+cl$cluster])
+
+set.seed(42)
+cl <- dbscan(z, 1, scale=F, MinPts = 5)
+col <- c('grey', rainbow(max(cl$cluster)))
+plot(pc_cor$x[,1], pc_cor$x[,2], pch=19, col=col[1+cl$cluster])
+
+set.seed(42)
+cl <- dbscan(z, 1.5, scale=F, MinPts = 5)
+col <- c('grey', rainbow(max(cl$cluster)))
+plot(pc_cor$x[,1], pc_cor$x[,2], pch=19, col=col[1+cl$cluster])
+
+set.seed(42)
+cl <- dbscan(z, 2, scale=F, MinPts = 5)
+col <- c('grey', rainbow(max(cl$cluster)))
+plot(pc_cor$x[,1], pc_cor$x[,2], pch=19, col=col[1+cl$cluster])
+
+```
+
+
+```{r}
+
+# Mixed clustering
+
+
+# hclust
+d    <- dist(z)
+set.seed(42)
+cl1  <- hclust(d, method="ward.D2")
+memb <- cutree(cl1, 4)
+# kmeans
+groupm  <- aggregate(z, list(memb), mean)
+centers <- cbind(groupm$acousticness, 
+                 groupm$danceability, 
+                 groupm$energy, 
+                 groupm$instrumentalness,
+                 groupm$liveness,
+                 groupm$loudness,
+                 groupm$speechiness,
+                 groupm$tempo,
+                 groupm$valence)
+set.seed(42)
+cl2 <- kmeans(z, centers = centers)
+# compare results (confusion matrix)
+table(memb, cl2$cluster) # result: k-means has classified 4 observations differently than hclust
+
+
+par(mfcol=c(1,2))
+plot(pc_cor$x[,1], pc_cor$x[,2], col=cl2$cluster,
+     main="Cluster predictions, mixed clustering", pch=19, xlab = 'PC1', ylab = 'PC2')
+
+# project cluster centers to PCA feature space:
+
+cluster_centers_pca <- cl2$centers %*% pc_cor$rotation[, 1:2]
+points(cluster_centers_pca[,1], cluster_centers_pca[,2], col = 'magenta', pch = 10, cex = 3)
+
+plot(pc_cor$x[,1], pc_cor$x[,2], col=as.numeric(x$Genre),
+     main="Truth", pch=19, xlab = 'PC1', ylab = 'PC2')
+
+```
+```{r}
+
+library("NbClust")
+
+# Total variance explained
+tve <- rep(NA, 15)
+for (k in 2:15) {
+  clk <- kmeans(z, k)
+  tve[k] <- 1-clk$tot.withinss/clk$totss
+}
+plot(tve, type="b")
+
+set.seed(42)
+NbClust(z, method="ward.D2", index="ch") # result: k*=2
+
+set.seed(42)
+NbClust(z, method="ward.D2") # result: majority vote (12) for k*=3.
+
+```
+
+```{r}
+
+# Silhouette method
+set.seed(42)
+fviz_nbclust(z, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+
+d <- dist(z)
+cl1 <- hclust(d, method="ward.D2")
+memb2 <- cutree(cl1, 2)
+memb3 <- cutree(cl1, 3)
+memb4 <- cutree(cl1, 4)
+
+library("cluster")
+par(mfcol=c(2,2))
+plot(pc_cor$x[,1], pc_cor$x[,2], col=memb2)
+s2 <- silhouette(memb2, d)
+plot(s2, col=1:2, border=NA)
+plot(pc_cor$x[,1], pc_cor$x[,2], col=memb3)
+s3 <- silhouette(memb3, d)
+plot(s3, col=1:3, border=NA)
+
+par(mfcol=c(1,3))
+clusplot(z, memb2, col.p=memb2)
+clusplot(z, memb3, col.p=memb3)
+clusplot(z, memb4, col.p=memb4)
+
+
+```
+
+```{r}
+
+library("cluster")
+set.seed(42)
+cl2 <- pam(z, 4)
+k_classic <- names(cl2$clustering[cl2$clustering == 1])
+k_techno <- names(cl2$clustering[cl2$clustering == 2])
+k_pop <- names(cl2$clustering[cl2$clustering == 3])
+k_hiphop <- names(cl2$clustering[cl2$clustering == 4])
+
+cl2$clustering[k_techno] <- 4
+cl2$clustering[k_pop] <- 3
+cl2$clustering[k_hiphop] <- 2
+cl2$clustering[k_classic] <- 1
+
+x$cluster <- as.factor(cl2$clustering)
+
+```
+
+
+```{r}
+
+x$Artist_Follower <- x$Artist_Follower/1000000
+
+x$fa_1 <- x$factor_1
+x$fa_2 <- x$factor_2
+x$fa_3 <- x$factor_3
+x$fa_4 <- x$factor_4
+
+
+par(mfrow=c(3,3))
+nx <- c("fa_1", "fa_2", "fa_3", "fa_4", "pc_1", "pc_2", "Artist_Follower", "days_release_orig", "Track_Popularity")
+for (i in 1:length(nx)) {
+  lmi <- lm(as.formula(paste('Artist_Popularity', nx[i], sep="~")), data=x)
+  summary(lmi)
+  plot(x[,nx[i]], x[,'Artist_Popularity'], xlab=nx[i], ylab='Artist Popularity', main=sprintf("R^2=%.2f", summary(lmi)$r.squared))
+  abline(lmi, col="red")
+}
+
+
+
+```
+
+
+```{r}
+
+model1 <- lm(Artist_Popularity ~ fa_1 + fa_2 + fa_3 + fa_4 + pc_1 + pc_2 + Artist_Follower + days_release_orig, data = x)
+
+summary(model1)
+
+# fa_2: "Youtube"
+# fa_3: "Artist content supply"
+# fa_4: "Artist long-term activity"
+# fa_1: "One hit wonder"
+
+# pc_1 (between classic and Pop, Hip Hop, Techno): strong negative loadings: acousticness and instrumentalness, strong positive loadings: danceability, energy and loudness
+# pc_2 (between Techno and Pop, Hip Hop): strong negative loadings: instrumentalness and tempo, strong positive loadings: speechiness and valence
+
+vif(model1) # fa_1, fa_3, fa_4, pc_1 mild collinearity
+library("perturb") # condition index
+colldiag(model1)
+
+# I remove some variables according to insignificance (fa_1, fa_4)
+
+model2 <- lm(Artist_Popularity ~ fa_2 + fa_3 + pc_1 + pc_2 + Artist_Follower + days_release_orig, data = x)
+# summary(model2)
+vif(model2)
+
+select.cols <- c("Artist_Popularity", "fa_2", "fa_3", "pc_1", "pc_2", "Artist_Follower", "days_release_orig")
+
+z <- as.data.frame(scale(dplyr::select(x, select.cols)))
+
+model2_z <- lm(Artist_Popularity ~ fa_2 + fa_3 + pc_1 + pc_2 + Artist_Follower + days_release_orig, data = z)
+# summary(model2_z)
+vif(model2_z)
+model2_z$coefficients^2
+sum(model2_z$coefficients^2) # 60% is the proportion in the variance of y explained by X and 40% of the variance of y is due to the variance of the residuals outside of the model IFF there was zero multicollinearity. In terms of relevance, 32% of variance in y is explained by pc_2, 10% by Artist_Follower, 8% by fa_3
+sort(round((model2_z$coefficients)^2, digits = 4), decreasing = T)
+
+
+```
+
+
+```{r}
+# Quadratic specification seems appropriate:
+
+# variables without and with quadratic terms (fa_2, pc_2, Artist_Follower)
+
+par(mfcol=c(2,3))
+
+lm_fa2 <- lm(Artist_Popularity ~ fa_2, data=x)
+plot(x[,'fa_2'], x[,'Artist_Popularity'], xlab='fa_2', main=sprintf("R^2=%.2f", summary(lm_fa2)$r.squared),
+     ylim = c(min(min(fitted(lm_fa2)), min(x$Artist_Popularity)), max(max(fitted(lm_fa2)), max(x$Artist_Popularity))), ylab = 'Artist_Popularity')
+abline(lm_fa2, col="red")
+
+lmq_fa2 <- lm(Artist_Popularity ~ poly(fa_2, 2), data=x)
+o <- order(x$fa_2)
+plot(x[,'fa_2'], x[,'Artist_Popularity'], xlab= 'fa_2 + fa_2^2', main=sprintf("R^2=%.2f", summary(lmq_fa2)$r.squared),
+     ylim = c(min(min(fitted(lmq_fa2)), min(x$Artist_Popularity)), max(max(fitted(lmq_fa2)), max(x$Artist_Popularity))), ylab = 'Artist_Popularity')
+lines(x$fa_2[o], fitted(lmq_fa2)[o], col="red")
+
+lm_follower <- lm(Artist_Popularity ~ Artist_Follower, data=x)
+plot(x[,'Artist_Follower'], x[,'Artist_Popularity'], xlab='Artist_Follower', main=sprintf("R^2=%.2f", summary(lm_follower)$r.squared),
+     ylim = c(min(min(fitted(lm_follower)), min(x$Artist_Popularity)), max(max(fitted(lm_follower)), max(x$Artist_Popularity))), ylab = 'Artist_Popularity')
+abline(lm_follower, col="red")
+
+lmq_follower <- lm(Artist_Popularity ~ poly(Artist_Follower, 2), data=x)
+o <- order(x$Artist_Follower)
+plot(x[,'Artist_Follower'], x[,'Artist_Popularity'], xlab= 'Artist_Follower + Artist_Follower^2', main=sprintf("R^2=%.2f", summary(lmq_follower)$r.squared),
+     ylim = c(min(min(fitted(lmq_follower)), min(x$Artist_Popularity)), max(max(fitted(lmq_follower)), max(x$Artist_Popularity))), ylab = 'Artist_Popularity')
+lines(x$Artist_Follower[o], fitted(lmq_follower)[o], col="red")
+
+lm_pc2 <- lm(Artist_Popularity ~ pc_2, data=x)
+plot(x[,'pc_2'], x[,'Artist_Popularity'], xlab='pc_2', main=sprintf("R^2=%.2f", summary(lm_pc2)$r.squared),
+     ylim = c(min(min(fitted(lm_pc2)), min(x$Artist_Popularity)), max(max(fitted(lm_pc2)), max(x$Artist_Popularity))), ylab = 'Artist_Popularity')
+abline(lm_pc2, col="red")
+
+lmq_pc2 <- lm(Artist_Popularity ~ poly(pc_2, 2), data=x)
+o <- order(x$pc_2)
+plot(x[,'pc_2'], x[,'Artist_Popularity'], xlab= 'pc_2 + pc_2^2', main=sprintf("R^2=%.2f", summary(lmq_pc2)$r.squared),
+     ylim = c(min(min(fitted(lmq_pc2)), min(x$Artist_Popularity)), max(max(fitted(lmq_pc2)), max(x$Artist_Popularity))), ylab = 'Artist_Popularity')
+lines(x$pc_2[o], fitted(lmq_pc2)[o], col="red")
+
+
+```
+
+
+```{r}
+
+# Residuals normality
+
+ks.test(model1$residuals, "pnorm", mean = mean(model1$residuals), sd=sd(model1$residuals))$statistic
+1.3581 / sqrt(length(model1$residuals))
+
+ks.test(model2$residuals, "pnorm", mean = mean(model2$residuals), sd=sd(model2$residuals))$statistic
+1.3581 / sqrt(length(model2$residuals))
+
+par(mfcol=c(2,2))
+plot(model2)
+
+par(mfcol=c(2,3))
+nx <- names(model2$model)
+for (i in 2:length(model2$model)) {
+  plot(model2$model[,i], residuals(model2), xlab=nx[i])
+  lines(lowess(model2$model[,i], residuals(model2)), col = "red")
+  abline(h = 0, col = "black", lty = 2)
+}
+
+par(mfcol=c(1,1))
+plot(model2$fitted.values, residuals(model2))
+lines(lowess(model2$fitted.values, residuals(model2)), col = "red")
+abline(h = 0, col = "black", lty = 2)
+
+# residuals vs. predictors and fitted values suggests nonlinearity of the regression function
+
+```
+
+```{r}
+
+par(mfcol=c(2,3))
+nx <- names(model2$model)
+for (i in 2:length(model2$model)) {
+  plot(model2$model[,i], rstandard(model2), xlab=nx[i])
+  lines(lowess(model2$model[,i], rstandard(model2)), col = "red")
+  # wenn Linie von 0 abweicht: Residuen sind biased, sprich deren Mittelwert nicht 0
+  abline(h = 0, col = "black", lty = 2)
+}
+
+# standardized residuals vs. fitted values
+
+par(mfcol=c(1,1))
+plot(model2$fitted.values, rstandard(model2), main = 'Standardized residuals vs. fitted values')
+lines(lowess(model2$fitted.values, rstandard(model2)), col = "red")
+abline(h = 0, col = "black", lty = 2)
+
+
+```
+
+```{r}
+
+# Breusch-Pagan Test + Durbin-Watson Test / spherical errors (i.e. iid)
+# model2 uses unscaled data
+auxiliary_reg <- lm(model2$residuals^2 ~ fa_2 + fa_3 + pc_1 + pc_2 + Artist_Follower + days_release_orig, data = x)
+summary(auxiliary_reg)
+# R^2: 0.1067
+# N = 196, N = nrow(x) 
+# test stat: 
+summary(auxiliary_reg)$r.square * nrow(x)
+# test stat: 20.90497
+p <- ncol(model2$model)-1
+qchisq(.95, df = p) # df = number of parameters p (without the constant!), acc. to Klinke: q = 5*(5+3)/2 WTF?
+# p_value = P(z > 12.59159) = 1-pchisq(20.90497, p=6) = 0.001908146 < 0.05 ,  reject H0 of homoskedasticity and conclude there is heteroskedasticity
+1-pchisq(20.90497, p)
+
+library("lmtest")
+bptest(model2)
+# test statistic n*R^2_aux > X^2_crit = qchisq(.95, df = 5), hence reject H0 and conclude that there's
+# heteroskedasticity and constancy of error variance does not hold --> inference invalidated
+
+dwtest(model2)
+# Durbin Watson test confirms that the error variance-covariance is diagonal, i.e. var(eps | X) =  \Omega * I
+# fail to reject H0: rho = 0 (alternative hypothesis is that there is autocorrelation in the errors)
+
+
+
+```
+```{r}
+# outlier detection / leverage
+
+par(mfcol=c(1,2))
+plot(hatvalues(model2), pch=19, main="Leverage", cex=0.5)
+n <- nrow(model2$model)
+p <- ncol(model2$model)-1
+abline(h=(1:3)*(p+1)/n, col=c("black", "darkred", "red"))
+
+plot(cooks.distance(model2), pch=19, main="Cook's distances",
+     cex=0.5)
+n <- nrow(model2$model)
+p <- ncol(model2$model)-1
+abline(h=4/n, col="red")
+
+outlier_index_leverage <- as.numeric(rownames(x[hatvalues(model2) > 3*(p+1)/n, ]))
+outlier_index_final <- outlier_index_leverage
+length(outlier_index_leverage)
+# There are 10 outliers that might be influential on the regression
+x[outlier_index_leverage, c("Track_Title","Track_Artist", "Artist_Popularity", "Artist_Follower", "viewsCount", "pc_1",
+                            "pc_2")]
+
+# Rule of thumb Cook's distance
+# movement of regression coefficients all together if ith observation is excluded
+outlier_index_cooksd <- as.numeric(rownames(x[cooks.distance(model2) > 3*(p+1)/n, ]))
+length(outlier_index_cooksd)
+x[outlier_index_cooksd, c("Track_Title","Track_Artist", "Artist_Popularity", "Artist_Follower", "viewsCount", "pc_1",
+                            "pc_2")]
+
+```
+
+```{r}
+
+# differences
+
+# SDBETA
+
+SDBETA <- dfbetas(model2)
+n <- nrow(model2$model)
+par(mfcol=c(2,3))
+plot(SDBETA[, 'fa_2'], main="fa_2", pch=19)
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'fa_3'], main="fa_3", pch=19)
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'pc_1'], main="pc_1", pch=19)
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'pc_2'], main="pc_2", pch=19)
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'Artist_Follower'], main="Artist_Follower", pch=19)
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'days_release_orig'], main="days_release_orig", pch=19)
+abline(h=c(-2,2)/sqrt(n), col="red")
+
+# SDFITS
+par(mfcol=c(1,1))
+SDFITS <- dffits(model2)
+plot(SDFITS, pch=19)
+abline(h=c(-1,1), col="red")
+n <- nrow(model2$model)
+p <- ncol(model2$model)-1
+abline(h=c(-2,2)*sqrt(p/n), col="darkred")
+
+# As this is a small data set, it is sufficient to analyze |\delta*y_i| > 1, in this case two observations are identified
+# of exceeding this limit. They are
+
+outlier_index_sdfits <- as.numeric(names(which(abs(SDFITS) > 1))) 
+
+x[outlier_index_sdfits, c("Track_Title","Track_Artist", "Artist_Popularity", "Artist_Follower", "viewsCount", "pc_1",
+                          "pc_2")]
+
+```
+
+
+```{r}
+# Add quadratic terms for fa_2, Artist_Follower and pc_2 first before excluding outliers!
+
+x$fa_2sq <- x$fa_2^2
+x$pc_2sq <- x$pc_2^2
+x$Artist_Followersq <- x$Artist_Follower^2
+# model2: lm(Artist_Popularity ~ fa_2 + fa_3 + pc_1 + pc_2 + Artist_Follower + days_release_orig, data = x)
+
+
+model3 <- lm(Artist_Popularity ~ fa_2 + fa_2sq + fa_3 + pc_1 + pc_2 + pc_2sq + Artist_Follower + Artist_Followersq + days_release_orig, data = x)
+summary(model3)
+vif(model3)
+```
+
+```{r}
+
+ks.test(model3$residuals, "pnorm", mean = mean(model3$residuals), sd=sd(model3$residuals))$statistic
+1.3581 / sqrt(length(model3$residuals))
+
+
+par(mfcol=c(2,2))
+plot(model2)
+
+par(mfcol=c(3,3))
+nx <- names(model3$model)
+for (i in 2:length(model3$model)) {
+  plot(model3$model[,i], residuals(model3), xlab=nx[i])
+  lines(lowess(model3$model[,i], residuals(model3)), col = "red")
+  abline(h = 0, col = "black", lty = 2)
+}
+
+par(mfcol=c(1,1))
+plot(model3$fitted.values, residuals(model3))
+lines(lowess(model3$fitted.values, residuals(model3)), col = "red")
+abline(h = 0, col = "black", lty = 2)
+
+# residuals vs. predictors and fitted values suggests accounting for nonlinearity of the regression function has improved
+
+par(mfcol=c(3,3))
+nx <- names(model3$model)
+for (i in 2:length(model3$model)) {
+  plot(model3$model[,i], rstandard(model3), xlab=nx[i])
+  lines(lowess(model3$model[,i], rstandard(model3)), col = "red")
+  # wenn Linie von 0 abweicht: Residuen sind biased, sprich deren Mittelwert nicht 0
+  abline(h = 0, col = "black", lty = 2)
+}
+
+# standardized residuals vs. fitted values
+
+par(mfcol=c(1,1))
+plot(model3$fitted.values, rstandard(model3), main = 'Standardized residuals vs. fitted values')
+lines(lowess(model3$fitted.values, rstandard(model3)), col = "red")
+abline(h = 0, col = "black", lty = 2)
+
+# Breusch-Pagan Test + Durbin-Watson Test / spherical errors (i.e. iid)
+# model2 uses unscaled data
+auxiliary_reg <- lm(model3$residuals^2 ~ fa_2 + fa_2sq + fa_3 + pc_1 + pc_2 + pc_2sq + Artist_Follower + Artist_Followersq + days_release_orig, data = x)
+summary(auxiliary_reg)
+# R^2: 0.06758
+# N = 196, N = nrow(x) 
+# test stat: 
+summary(auxiliary_reg)$r.square * nrow(x)
+# test stat: 13.24499
+p <- ncol(model3$model)-1
+qchisq(.95, df = p) # df = number of parameters p (without the constant!), acc. to Klinke: q = 5*(5+3)/2 WTF?
+# p_value = P(z > 16.91898) = 1-pchisq(13.24499, p=9) = 0.1518304 > 0.05 ,  fail to reject H0 of homoskedasticity, i.e. constant variance of error term
+1-pchisq(13.24499, p)
+
+library("lmtest")
+bptest(model3)
+# test statistic n*R^2_aux > X^2_crit = qchisq(.95, df = 5), hence fail to reject H0 and conclude that there's
+# no heteroskedasticity --> valid inference
+
+dwtest(model3)
+# Durbin Watson test confirms that the error variance-covariance is diagonal, i.e. var(eps | X) =  \Omega * I
+# fail to reject H0: rho = 0 (alternative hypothesis is that there is autocorrelation in the errors)
+
+
+```
+
+```{r}
+# outlier detection / leverage
+
+par(mfcol=c(1,1))
+plot(hatvalues(model3), pch=19, cex=0.5)
+n <- nrow(model3$model)
+p <- ncol(model3$model)-1
+abline(h=(1:3)*(p+1)/n, col=c("black", "darkred", "red"))
+
+plot(cooks.distance(model3), pch=19,
+     cex=0.5)
+n <- nrow(model3$model)
+p <- ncol(model3$model)-1
+abline(h=4/n, col="red")
+
+outlier_index_leverage <- as.numeric(rownames(x[hatvalues(model3) > 3*(p+1)/n, ]))
+outlier_index_final <- outlier_index_leverage
+length(outlier_index_leverage)
+# There are 10 outliers that might be influential on the regression
+x[outlier_index_leverage, c("Track_Title","Track_Artist", "Genre", "Artist_Popularity", "Artist_Follower", "viewsCount")]
+
+
+
+
+# Rule of thumb Cook's distance
+# movement of regression coefficients all together if ith observation is excluded
+outlier_index_cooksd <- as.numeric(rownames(x[cooks.distance(model3) > 3*(p+1)/n, ]))
+length(outlier_index_cooksd)
+x[outlier_index_cooksd, c("Track_Title","Track_Artist", "Artist_Popularity", "Artist_Follower", "viewsCount", "pc_1",
+                            "pc_2")]
+
+# same outliers detected as in model2 even after modification of the model
+
+
+```
+
+```{r}
+
+# differences
+
+# SDBETA
+
+SDBETA <- dfbetas(model3)
+n <- nrow(model3$model)
+par(mfcol=c(3,3))
+plot(SDBETA[, 'fa_2'], main="fa_2", pch=19, ylab = "fa_2")
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'fa_2sq'], main="fa_2sq", pch=19, ylab = "fa_2sq")
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'fa_3'], main="fa_3", pch=19, ylab = "fa_3")
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'pc_1'], main="pc_1", pch=19, ylab = "pc_1")
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'pc_2'], main="pc_2", pch=19, ylab = "pc_2")
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'pc_2sq'], main="pc_2sq", pch=19, ylab = "pc_2sq")
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'Artist_Follower'], main="Artist_Follower", pch=19, ylab = "Artist_Follower")
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'Artist_Followersq'], main="Artist_Followersq", pch=19, ylab = 'Artist_Followersq')
+abline(h=c(-2,2)/sqrt(n), col="red")
+plot(SDBETA[, 'days_release_orig'], main="days_release_orig", pch=19, ylab = 'days_release')
+abline(h=c(-2,2)/sqrt(n), col="red")
+
+# SDFITS
+par(mfcol=c(1,1))
+SDFITS <- dffits(model3)
+plot(SDFITS, pch=19)
+abline(h=c(-1,1), col="red")
+n <- nrow(model3$model)
+p <- ncol(model3$model)-1
+abline(h=c(-2,2)*sqrt(p/n), col="darkred")
+
+# As this is a small data set, it is sufficient to analyze |\delta*y_i| > 1, in this case two observations are identified
+# of exceeding this limit. They are
+
+outlier_index_sdfits <- as.numeric(names(which(abs(SDFITS) > 1))) 
+
+x[outlier_index_sdfits, c("Track_Title","Track_Artist", "Artist_Popularity", "Artist_Follower", "viewsCount", "pc_1",
+                          "pc_2")]
+
+
+```
+
+
+```{r}
+# Now exclude the outliers from leverage analysis
+
+x_noout <- x[-outlier_index_final, ]
+
+lm_final <- lm(Artist_Popularity ~ fa_2 + fa_2sq + fa_3 + pc_1 + pc_2 + pc_2sq + Artist_Follower + Artist_Followersq + days_release_orig, data = x_noout)
+summary(lm_final) #  result: R^2 decreased a little bit
+vif(lm_final)
+
+# library("stargazer")
+# stargazer::stargazer(model1, model2, model3, lm_final)
+
+library("boot")
+ci <- confint(lm_final, level = 0.95)
+
+plot.confint <- function (b, b.boot, ci, main) {
+  hist(b.boot, main=main); rug(b.boot)
+  abline(v=b, col="red"); abline(v=ci, col="blue")
+  abline(v=quantile(b.boot, c(0.025, 0.975)), col="green")
+}
+
+betahat <- boot(lm_final$model, R=999, 
+                function(x, index) { lm(Artist_Popularity ~ fa_2 + fa_2sq + fa_3 + pc_1 + pc_2 + pc_2sq + Artist_Follower + Artist_Followersq + days_release_orig, data = x_noout, subset=index)$coefficients })
+
+par(mfcol=c(2,3))
+
+plot.confint(lm_final$coefficients[1], betahat$t[,1], ci[1,], "Intercept")
+plot.confint(lm_final$coefficients[2], betahat$t[,2], ci[2,], "fa_2")
+plot.confint(lm_final$coefficients[3], betahat$t[,3], ci[3,], "fa_2sq")
+plot.confint(lm_final$coefficients[4], betahat$t[,4], ci[4,], "fa_3")
+plot.confint(lm_final$coefficients[5], betahat$t[,5], ci[5,], "pc_1")
+plot.confint(lm_final$coefficients[6], betahat$t[,6], ci[6,], "pc_2")
+
+par(mfcol=c(2,2))
+
+plot.confint(lm_final$coefficients[7], betahat$t[,7], ci[7,], "pc_2sq")
+plot.confint(lm_final$coefficients[8], betahat$t[,8], ci[8,], "Artist_Follower")
+plot.confint(lm_final$coefficients[9], betahat$t[,9], ci[9,], "Artist_Followersq")
+plot.confint(lm_final$coefficients[10], betahat$t[,10], ci[10,], "days_release")
+
+
+```
+
+
+```{r}
+
+model5 <- lm(Artist_Popularity ~ fa_2 + fa_2sq, data = x)
+summary(model5)
+
+vertex <- -model5$coefficients[2] / (2*model5$coefficients[3])
+vertex
+
+(vertex <= max(x$fa_2)) & (vertex >= min(x$fa_2)) # so vertex is inside of range of Artist_Follower and there exists a quadratic component
+
+# https://stats.idre.ucla.edu/r/faq/how-can-i-estimate-the-standard-error-of-transformed-regression-parameters-in-r-using-the-delta-method/
+# https://www.statalist.org/forums/forum/general-stata-discussion/general/1376936-testing-whether-to-include-a-squared-term
+# https://www.statalist.org/forums/forum/general-stata-discussion/general/1344089-how-to-find-the-turning-point-for-a-quadratic-function
+# https://www.statalist.org/forums/forum/general-stata-discussion/general/1408413-significance-level-of-quadratic-term
+# https://psych.unl.edu/psycrs/statpage/nonlin_eg.pdf ("true" quadratic component vs. skewed predictor)
+
+
+library("msm") # equivalent to the nlcom function in Stata
+
+# z-value according to the Delta method
+
+vertex / msm::deltamethod(~ -x2 / (2 * x3), coef(model5), vcov(model5)) # = 12.8421
+
+# CI according to Stata
+
+vertex - qt(0.975, df = 10000000) * msm::deltamethod(~ -x2 / (2 * x3), coef(model5), vcov(model5))
+vertex + qt(0.975, df = 10000000) * msm::deltamethod(~ -x2 / (2 * x3), coef(model5), vcov(model5))
+
+n <- nrow(model5$model)
+d <- length(model5$coefficients)
+df <- n - d
+
+# http://sia.webpopix.org/nonlinearRegression.html
+
+# p_value = P(z > 1.959964) = 1-pt(z, df=df) = 3.270659e-10 < 0.05 <-- reject H0 that vertex is equal to zero
+
+# vertex for fa_2
+
+vertex <- -model3$coefficients[2] / (2*model3$coefficients[3])
+vertex
+(vertex <= max(x$fa_2)) & (vertex >= min(x$fa_2)) 
+z <- vertex / msm::deltamethod(~ -x2 / (2 * x3), coef(model3), vcov(model3))
+z
+lower_CI <- vertex - qt(0.975, df = 10000000) * msm::deltamethod(~ -x2 / (2 * x3), coef(model3), vcov(model3))
+upper_CI <- vertex + qt(0.975, df = 10000000) * msm::deltamethod(~ -x2 / (2 * x3), coef(model3), vcov(model3))
+n <- nrow(model3$model)
+d <- length(model3$coefficients)
+df <- n - d
+1-pt(z, df=df)
+# p_value = P(z > 1.959964) = 1-pt(z, df=df) = 4.440892e-16 < 0.05 <-- reject H0 that vertex is equal to zero
+
+# vertex for pc_2
+
+vertex <- -model3$coefficients[6] / (2*model3$coefficients[7])
+vertex
+(vertex <= max(x$pc_2)) & (vertex >= min(x$pc_2)) 
+z <- vertex / msm::deltamethod(~ -x6 / (2 * x7), coef(model3), vcov(model3))
+z
+lower_CI <- vertex - qt(0.975, df = 10000000) * msm::deltamethod(~ -x6 / (2 * x7), coef(model3), vcov(model3))
+upper_CI <- vertex + qt(0.975, df = 10000000) * msm::deltamethod(~ -x6 / (2 * x7), coef(model3), vcov(model3))
+n <- nrow(model3$model)
+d <- length(model3$coefficients)
+df <- n - d
+1-pt(z, df=df)
+# p_value = P(z > 1.959964) = 1-pt(z, df=df) = 5.125243e-06 < 0.05 <-- reject H0 that vertex is equal to zero
+
+# vertex for Artist_Follower
+
+vertex <- -model3$coefficients[8] / (2*model3$coefficients[9])
+vertex
+(vertex <= max(x$Artist_Follower)) & (vertex >= min(x$Artist_Follower)) 
+z <- vertex / msm::deltamethod(~ -x8 / (2 * x9), coef(model3), vcov(model3))
+z
+lower_CI <- vertex - qt(0.975, df = 10000000) * msm::deltamethod(~ -x8 / (2 * x9), coef(model3), vcov(model3))
+upper_CI <- vertex + qt(0.975, df = 10000000) * msm::deltamethod(~ -x8 / (2 * x9), coef(model3), vcov(model3))
+n <- nrow(model3$model)
+d <- length(model3$coefficients)
+df <- n - d
+1-pt(z, df=df)
+
+
+
+
+plot(Artist_Follower_trans, x$Artist_Popularity)
+
+#min_max_normalize <- function(x)
+#{
+#  return( (10-1)*((x- min(x)) /(max(x)-min(x))) + 1)
+#}
+
+#min_fa_2 <- optimize(ksD, c(-10,10), x=min_max_normalize(x$pc_2))$minimum
+#fa_2bc <- bcPower(min_max_normalize(x$pc_2), min_fa_2)
+
+#fa_2bcsqrr <- fa_2bc ** 0.5
+#fa_2bcsqrrcenter <- fa_2bcsqrr - mean(fa_2bcsqrr)
+#fa_2bcsqrrcentersq <- fa_2bcsqrrcenter ** 2
+
+#cor(cbind(x$Artist_Popularity, fa_2bcsqrrcenter, fa_2bcsqrrcentersq))
+
+
+
+
+
+#plot(x$fa_2, x$Artist_Popularity)
+#plot(x$pc_2, x$Artist_Popularity)
+
+```
+
+```{r}
+
+# baseline model:
+# forward
+
+lmi <- lm(Artist_Popularity~1, data=lm_final$model)
+lmf <- MASS::stepAIC(lmi, scope=~
+                fa_2 
+               + fa_2sq
+               + fa_3 
+               + x_noout[,'fa_4'] 
+               + pc_1
+               + pc_2
+               + pc_2sq
+               + Artist_Follower
+               + Artist_Followersq
+               + days_release_orig
+               + x_noout[, 'fa_1']
+               + x_noout[, 'Track_Duration_ms']
+               + x_noout[, 'Track_Popularity']
+               ,direction = "forward")
+
+summary(lmf)
+
+# backward:
+lma <- lm(Artist_Popularity ~ fa_2 + fa_2sq + fa_3 + fa_4 + pc_1 + pc_2 + pc_2sq + Artist_Follower 
+          + Artist_Followersq + fa_1 + Track_Duration_ms
+          + days_release_orig + Track_Popularity, 
+          data= x_noout)
+
+lmb <- MASS::stepAIC(lma)
+summary(lmb)
+
+
+```
+
+```{r}
+
+# Regularization
+
+sel.var <- c("fa_1", "fa_2", "fa_2sq", "fa_3", "fa_4", "pc_1", "pc_2", "pc_2sq", "Artist_Follower", "Artist_Followersq", "Artist_Popularity", "days_release_orig", "Track_Popularity", "Track_Duration_ms") 
+
+df <- dplyr::select(x_noout, sel.var)
+
+lmfull <- lm(Artist_Popularity~., data=df)
+lmback <- step(lmfull)
+
+
+library("glmnet")
+xl <- as.matrix(df[,-11])
+yl <- df[,11]
+set.seed(42)
+lmlasso <- cv.glmnet(xl, yl, alpha =1) # cross-validation finds the value of lambda which minimizes MSE, alpha = 1 for LASSO
+plot(lmlasso) # displays the bias-variance trade-off (MSE = variance + bias^2)
+best.lambda <- lmlasso$lambda.min
+lmlasso$lambda.1se
+
+cl <- list(coef(lmlasso, s="lambda.min")[,1], coef(lmlasso, s="lambda.1se")[,1], coef(lmback), coef(lmfull))
+cf <- matrix(NA, nrow=dim(xl)[2]+1, ncol=length(cl))
+row.names(cf) <- names(lmfull$coefficients)
+i <- 1
+for (ci in cl) {
+  cf[names(ci),i] <- ci[names(ci)]
+  i <- i+1
+}
+colnames(cf) <- c("min", "1se", "back", "full")
+cf[cf==0] <- NA
+cf
+
+# variable importance
+glmmod <- glmnet(xl, yl, lambda = best.lambda)
+coefs = coef(glmmod)[,1]
+coefs = sort(abs(coefs), decreasing = T)
+coefs
+coef(lmlasso, s="lambda.1se")
+
+
+```
+
+```{r}
+######################
+# Performance metrics - full data
+
+performace_metrics <- matrix(nrow = 10, ncol = 6)
+
+RMSE(predict(lmfull, newdata = df), df$Artist_Popularity)
+R2(predict(lmfull, newdata = df), df$Artist_Popularity)
+
+performace_metrics[1,1] <- RMSE(predict(lmfull, newdata = df), df$Artist_Popularity)
+performace_metrics[1,2] <- R2(predict(lmfull, newdata = df), df$Artist_Popularity)
+
+
+# x_model <- model.matrix(Artist_Popularity~., x_noout)
+
+library("glmnet")
+"Ridge regression"
+set.seed(42)
+best.lambda <- cv.glmnet(x = as.matrix(df[,-11]), y = as.matrix(df[,11]), alpha = 0)$lambda.min
+ridge.cv <- glmnet(x = as.matrix(df[,-11]), y = as.matrix(df[,11]), alpha = 0, lambda = best.lambda)
+# as.numeric(coef(ridge.cv)[,1]) %*% as.numeric(x_model[1,]) equivalent
+# predict(ridge.cv, newx = as.matrix(x_noout[1,-8])) equivalent
+RMSE(predict(ridge.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+R2(predict(ridge.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+
+performace_metrics[2,1] <- RMSE(predict(ridge.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+performace_metrics[2,2] <- R2(predict(ridge.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+
+"LASSO regression"
+set.seed(42)
+best.lambda <- cv.glmnet(x = as.matrix(df[,-11]), y = as.matrix(df[,11]), alpha = 1)$lambda.min
+lasso.cv <- glmnet(x = as.matrix(df[,-11]), y = as.matrix(df[,11]), alpha = 1, lambda = best.lambda)
+RMSE(predict(lasso.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+R2(predict(lasso.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+
+performace_metrics[3,1] <- RMSE(predict(lasso.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+performace_metrics[3,2] <- R2(predict(lasso.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+
+"Elasticnet regression"
+set.seed(42)
+best.lambda <- cv.glmnet(x = as.matrix(df[,-11]), y = as.matrix(df[,11]), alpha = 0.5)$lambda.min
+elasticnet.cv <- glmnet(x = as.matrix(df[,-11]), y = as.matrix(df[,11]), alpha = 0.5, lambda = best.lambda)
+RMSE(predict(elasticnet.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+R2(predict(elasticnet.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+
+performace_metrics[4,1] <- RMSE(predict(elasticnet.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+performace_metrics[4,2] <- R2(predict(elasticnet.cv, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+
+x_full <- model.matrix(Artist_Popularity~., df)[,-1]
+
+ridge_res2 <- as.numeric(df$Artist_Popularity - predict(ridge.cv, x_full))^2
+lasso_res2 <- as.numeric(df$Artist_Popularity - predict(lasso.cv, x_full))^2
+elasticnet_res2 <- as.numeric(df$Artist_Popularity - predict(elasticnet.cv, x_full))^2
+
+par(mfcol=c(2,2))
+barplot((df$Artist_Popularity - predict(lmfull, df))^2, labels = FALSE)
+Axis(side=2)
+title(main = paste("LM (full sample): RMSE =",round(RMSE(predict(lmfull, df), df$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(lmfull, df), df$Artist_Popularity), digits = 2)))
+barplot(ridge_res2, main = paste("Ridge (full sample): RMSE =",round(RMSE(predict(ridge.cv, x_full), df$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(ridge.cv, x_full), df$Artist_Popularity), digits = 2)))
+barplot(lasso_res2, main = paste("LASSO (full sample): RMSE =",round(RMSE(predict(lasso.cv, x_full), df$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(lasso.cv, x_full), df$Artist_Popularity), digits = 2)))
+barplot(elasticnet_res2, main = paste("Elasticnet (full sample): RMSE =",round(RMSE(predict(elasticnet.cv, x_full), df$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(elasticnet.cv, x_full), df$Artist_Popularity), digits = 2)))
+
+
+
+
+
+```
+
+
+```{r}
+
+library("caret")
+
+# Splitting in train and test data
+
+set.seed(42)
+idx.train <- createDataPartition(y = df$Artist_Popularity, p = 0.75, list = FALSE)
+train <- df[idx.train, ]
+test <- df[-idx.train,]
+
+lm_train <- lm(Artist_Popularity~., data=train)
+RMSE(predict(lm_train, newdata = train), train$Artist_Popularity)
+R2(predict(lm_train, newdata = train), train$Artist_Popularity)
+
+performace_metrics[1,3] <- RMSE(predict(lm_train, newdata = train), train$Artist_Popularity)
+performace_metrics[1,4] <- R2(predict(lm_train, newdata = train), train$Artist_Popularity)
+
+RMSE(predict(lm_train, newdata = test), test$Artist_Popularity)
+R2(predict(lm_train, newdata = test), test$Artist_Popularity)
+
+performace_metrics[1,5] <- RMSE(predict(lm_train, newdata = test), test$Artist_Popularity)
+performace_metrics[1,6] <- R2(predict(lm_train, newdata = test), test$Artist_Popularity)
+
+"Ridge regression"
+set.seed(42)
+best.lambda <- cv.glmnet(x = as.matrix(train[,-11]), y = as.matrix(train[,11]), alpha = 0)$lambda.min
+ridge.cv <- glmnet(x = as.matrix(train[,-11]), y = as.matrix(train[,11]), alpha = 0, lambda = best.lambda)
+# as.numeric(coef(ridge.cv)[,1]) %*% as.numeric(x_model[1,]) equivalent
+# predict(ridge.cv, newx = as.matrix(x_noout[1,-8])) equivalent
+RMSE(predict(ridge.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+R2(predict(ridge.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+
+performace_metrics[2,3] <- RMSE(predict(ridge.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+performace_metrics[2,4] <- R2(predict(ridge.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+
+RMSE(predict(ridge.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+R2(predict(ridge.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+
+performace_metrics[2,5] <- RMSE(predict(ridge.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11])) 
+performace_metrics[2,6] <- R2(predict(ridge.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+
+
+"LASSO regression"
+set.seed(42)
+best.lambda <- cv.glmnet(x = as.matrix(train[,-11]), y = as.matrix(train[,11]), alpha = 1)$lambda.min
+lasso.cv <- glmnet(x = as.matrix(train[,-11]), y = as.matrix(train[,11]), alpha = 1, lambda = best.lambda)
+RMSE(predict(lasso.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+R2(predict(lasso.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+
+performace_metrics[3,3] <- RMSE(predict(lasso.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+performace_metrics[3,4] <- R2(predict(lasso.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+
+RMSE(predict(lasso.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+R2(predict(lasso.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+
+performace_metrics[3,5] <- RMSE(predict(lasso.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+performace_metrics[3,6] <- R2(predict(lasso.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+  
+"Elasticnet regression"
+set.seed(42)
+best.lambda <- cv.glmnet(x = as.matrix(train[,-11]), y = as.matrix(train[,11]), alpha = 0.5)$lambda.min
+elasticnet.cv <- glmnet(x = as.matrix(train[,-11]), y = as.matrix(train[,11]), alpha = 0.5, lambda = best.lambda)
+RMSE(predict(elasticnet.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+R2(predict(elasticnet.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+
+performace_metrics[4,3] <- RMSE(predict(elasticnet.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+performace_metrics[4,4] <- R2(predict(elasticnet.cv, newx = as.matrix(train[,-11])), as.matrix(train[,11]))
+
+RMSE(predict(elasticnet.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+R2(predict(elasticnet.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+
+performace_metrics[4,5] <- RMSE(predict(elasticnet.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+performace_metrics[4,6] <- R2(predict(elasticnet.cv, newx = as.matrix(test[,-11])), as.matrix(test[,11]))
+  
+# Graphics
+
+# Training data
+
+x_train <- model.matrix(Artist_Popularity~., train)[,-1]
+
+ridge_res2 <- as.numeric(train$Artist_Popularity - predict(ridge.cv, x_train))^2
+lasso_res2 <- as.numeric(train$Artist_Popularity - predict(lasso.cv, x_train))^2
+elasticnet_res2 <- as.numeric(train$Artist_Popularity - predict(elasticnet.cv, x_train))^2
+
+par(mfcol=c(2,2))
+barplot((train$Artist_Popularity - predict(lm_train, train))^2, main = paste("LM (train): RMSE =",round(RMSE(predict(lm_train, train), train$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(lm_train, train), train$Artist_Popularity), digits = 2)))
+barplot(ridge_res2, main = paste("Ridge (train): RMSE =",round(RMSE(predict(ridge.cv, x_train), train$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(ridge.cv, x_train), train$Artist_Popularity), digits = 2)))
+barplot(lasso_res2, main = paste("LASSO (train): RMSE =",round(RMSE(predict(lasso.cv, x_train), train$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(lasso.cv, x_train), train$Artist_Popularity), digits = 2)))
+barplot(elasticnet_res2, main = paste("Elasticnet (train): RMSE =",round(RMSE(predict(elasticnet.cv, x_train), train$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(elasticnet.cv, x_train), train$Artist_Popularity), digits = 2)))
+
+# Test data
+
+x_test <- model.matrix(Artist_Popularity~., test)[,-1]
+
+ridge_res2 <- as.numeric(test$Artist_Popularity - predict(ridge.cv, x_test))^2
+lasso_res2 <- as.numeric(test$Artist_Popularity - predict(lasso.cv, x_test))^2
+elasticnet_res2 <- as.numeric(test$Artist_Popularity - predict(elasticnet.cv, x_test))^2
+
+par(mfcol=c(2,2))
+barplot((test$Artist_Popularity - predict(lm_train, test))^2, main = paste("LM (test): RMSE =",round(RMSE(predict(lm_train, test), test$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(lm_train, test), test$Artist_Popularity), digits = 2)))
+barplot(ridge_res2, main = paste("Ridge (test): RMSE =",round(RMSE(predict(ridge.cv, x_test), test$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(ridge.cv, x_test), test$Artist_Popularity), digits = 2)))
+barplot(lasso_res2, main = paste("LASSO (test): RMSE =",round(RMSE(predict(lasso.cv, x_test), test$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(lasso.cv, x_test), test$Artist_Popularity), digits = 2)))
+barplot(elasticnet_res2, main = paste("Elasticnet (test): RMSE =",round(RMSE(predict(elasticnet.cv, x_test), test$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(elasticnet.cv, x_test), test$Artist_Popularity), digits = 2)))
+
+
+
+
+
+```
+
+```{r}
+
+
+# Non-parametric and semiparametric regression
+
+# Kernel density estimator
+
+library("np")
+bw   <- npudensbw(~Track_Duration_ms, data=df) # Track_Duration_ms bi-modal?
+fhat <- npudens(bw)
+fhat
+plot(fhat, main=sprintf("%s with h=%.2f", fhat$pckertype, fhat$bw))
+rug(df$Track_Duration_ms)
+
+bw <- npudensbw(~Artist_Popularity+Track_Duration_ms, data=df, bwmethod="normal-reference")
+fhat <- npudens(bw)
+plot(fhat) # bi-modal
+
+par(mfcol=c(1,1))
+#1) at Track_Duration_ms ~ 1 and Artist_Popularity ~ -1 (meaning longer tracks' artists are less popular)
+plot(fhat, view="fixed", phi=10, theta=320, main = "")
+par(mfcol=c(1,1))
+# 2) at Track_Duration_ms ~ -0.5 and Artist_Popularity ~ 1
+plot(fhat, view="fixed", phi=10, theta=155, main = "")
+
+par(mfcol=c(1,1))
+nw2 <- npreg(Artist_Popularity~pc_2+Track_Duration_ms, data=df)
+summary(nw2)
+plot(nw2)
+
+# Nadaraya-Watson estimator
+
+# bw <- npregbw(Artist_Popularity~Track_Duration_ms, data=df)
+# mhat <- npreg(bw)
+# main <- sprintf("%s with h=%.2f", mhat$pckertype, mhat$bw)
+# plot(df$Artist_Popularity, df$Track_Duration_ms, pch=19, cex=0.3, main=main)
+# ind <- order(df$Track_Duration_ms)
+# xs  <- cbind(df$Track_Duration_ms, fitted(mhat))[ind,]
+# lines(xs[,1], xs[,2], col="red", lwd=2)
+# rug(df$Track_Duration_ms)
+
+# bw <- npregbw(Artist_Popularity~Track_Duration_ms+Track_Popularity, data=df)
+# mhat <- npreg(bw)
+# plot(mhat)
+
+
+plotContour <- function (model, data, n=30) {
+  mf <- model.frame(model$terms, data)
+  mc <- lapply(as.list(mf[,-1]), pretty, n=n)
+  zc <- predict(model, expand.grid(mc))
+  dim(zc) <- sapply(mc, length)
+  r2 <- 1-var(residuals(model))/var(mf[,1])
+  contour(mc[[1]], mc[[2]], zc, xlab=names(mf)[2], ylab=names(mf)[3],
+            main=sprintf("R^2=%.3f", r2))
+  cc <- gray(0.75-0.75*(mf[,1]-min(mf[,1]))/(max(mf[,1])-min(mf[,1])))
+  points(mf[,2], mf[,3], pch=19, cex=0.5, col=cc)
+  }
+
+
+model <- lm(Artist_Popularity~pc_1 + pc_2, data=df)
+par(mfrow=c(1,1))
+plotContour(model, df)
+
+```
+
+
+
+```{r}
+
+# Partial linear model (mixing linear and spline terms)
+
+library("mgcv")
+model <- gam(Artist_Popularity~s(Track_Popularity)+Track_Duration_ms, data=df)
+plotContour(model, df$Track_Popularity, df$Track_Duration_ms, df$Artist_Popularity)
+plot(model)
+
+# Additive model
+
+library("gam")
+
+am1 <- gam(Artist_Popularity ~ s(fa_1) + s(fa_2) + s(fa_3) + s(fa_4) + s(pc_1) + s(pc_2) + s(Artist_Follower) + s(days_release_orig) + s(Track_Popularity) + s(Track_Duration_ms) + s(fa_2sq) + s(pc_2sq) + s(Artist_Followersq), data=df)
+print(am1)
+
+par(mfrow=c(3,4))
+plot(am1)
+plot(fitted(am1), residuals(am1))
+lines(lowess(fitted(am1), residuals(am1)), col="red", lwd=2)
+n <- nrow(df)
+1-sum(residuals(am1)^2)/((n-1)*var(df$Artist_Popularity))
+
+performace_metrics[5,1] <- RMSE(predict(am1, newdata = df), df$Artist_Popularity)
+performace_metrics[5,2] <- R2(predict(am1, newdata = df), df$Artist_Popularity)
+
+am1_train <- gam(Artist_Popularity ~ s(fa_1) + s(fa_2) + s(fa_3) + s(fa_4) + s(pc_1) + s(pc_2) + s(Artist_Follower) + s(days_release_orig) + s(Track_Popularity) + s(Track_Duration_ms) + s(fa_2sq) + s(pc_2sq) + s(Artist_Followersq), data=train)
+
+performace_metrics[5,3] <- RMSE(predict(am1_train, newdata = train), train$Artist_Popularity)
+performace_metrics[5,4] <- R2(predict(am1_train, newdata = train), train$Artist_Popularity)
+
+performace_metrics[5,5] <- RMSE(predict(am1_train, newdata = test), test$Artist_Popularity)
+performace_metrics[5,6] <- R2(predict(am1_train, newdata = test), test$Artist_Popularity)
+
+
+# Single index model
+
+sim <- npindex(Artist_Popularity ~ fa_1 + fa_2 + fa_3 + fa_4 + pc_1 + pc_2 + Artist_Follower + days_release_orig + Track_Popularity + Track_Duration_ms + fa_2sq + pc_2sq + Artist_Followersq, data=df)
+summary(sim)
+
+performace_metrics[6,1] <- RMSE(predict(sim, newdata = df), df$Artist_Popularity)
+performace_metrics[6,2] <- R2(predict(sim, newdata = df), df$Artist_Popularity)
+
+sim_train <- npindex(Artist_Popularity ~ fa_1 + fa_2 + fa_3 + fa_4 + pc_1 + pc_2 + Artist_Follower + days_release_orig + Track_Popularity + Track_Duration_ms + fa_2sq + pc_2sq + Artist_Followersq, data=train)
+
+performace_metrics[6,3] <- RMSE(predict(sim_train, newdata = train), train$Artist_Popularity)
+performace_metrics[6,4] <- R2(predict(sim_train, newdata = train), train$Artist_Popularity)
+
+performace_metrics[6,5] <- RMSE(predict(sim_train, newdata = test), test$Artist_Popularity)
+performace_metrics[6,6] <- R2(predict(sim_train, newdata = test), test$Artist_Popularity)
+
+par(mfrow=c(3,4))
+plot(sim)
+plot(fitted(sim), residuals(sim))
+lines(lowess(fitted(sim), residuals(sim)), col="red", lwd=2)
+n <- nrow(df)
+1-sum(residuals(sim)^2)/((n-1)*var(df$Artist_Popularity))
+
+# Projection Pursuit Regression
+
+ppr <- ppr(Artist_Popularity ~ fa_1 + fa_2 + fa_3 + fa_4 + pc_1 + pc_2 + Artist_Follower + days_release_orig + Track_Popularity + Track_Duration_ms + fa_2sq + pc_2sq + Artist_Followersq, data=df, nterm=5)
+
+performace_metrics[7,1] <- RMSE(predict(ppr, newdata = df), df$Artist_Popularity)
+performace_metrics[7,2] <- R2(predict(ppr, newdata = df), df$Artist_Popularity)
+
+ppr_train <- ppr(Artist_Popularity ~ fa_1 + fa_2 + fa_3 + fa_4 + pc_1 + pc_2 + Artist_Follower + days_release_orig + Track_Popularity + Track_Duration_ms + fa_2sq + pc_2sq + Artist_Followersq, data=train, nterm=5)
+
+performace_metrics[7,3] <- RMSE(predict(ppr_train, newdata = train), train$Artist_Popularity)
+performace_metrics[7,4] <- R2(predict(ppr_train, newdata = train), train$Artist_Popularity)
+performace_metrics[7,5] <- RMSE(predict(ppr_train, newdata = test), test$Artist_Popularity)
+performace_metrics[7,6] <- R2(predict(ppr_train, newdata = test), test$Artist_Popularity)
+
+summary(ppr)
+par(mfrow=c(1,1))
+plot(ppr)
+plot(fitted(ppr), residuals(ppr))
+lines(lowess(fitted(ppr), residuals(ppr)), col="red", lwd=2)
+n <- nrow(df)
+1-sum(residuals(ppr)^2)/((n-1)*var(df$Artist_Popularity))
+
+
+
+```
+
+```{r}
+
+library("rpart")
+set.seed(42)
+tr1 <- rpart(Artist_Popularity~fa_1+fa_2+fa_3+fa_4+pc_1+pc_2+Artist_Follower+days_release_orig
+             +Track_Popularity+Track_Duration_ms+fa_2sq+pc_2sq+Artist_Followersq, data=df, cp = 0)
+
+tr1
+par(mfrow=c(1,1))
+plot(tr1)
+text(tr1)
+# summary(tr1)
+
+library("rpart.plot")
+rpart.plot(tr1, cex = 0.7)
+
+n <- nrow(x_noout)
+1-sum(residuals(tr1)^2)/((n-1)*var(df$Artist_Popularity))
+
+RMSE(predict(tr1, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+R2(predict(tr1, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+
+performace_metrics[8,1] <- RMSE(predict(tr1, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+performace_metrics[8,2] <- R2(predict(tr1, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+
+par(mfrow=c(1,1))
+printcp(tr1)
+plotcp(tr1)
+tr1$cptable
+best.cp <- tr1$cptable[which.min(tr1$cptable[,"xerror"]),"CP"]
+best.cp
+
+dt_pruned <- prune(tr1, cp=best.cp)
+
+1-sum(residuals(dt_pruned)^2)/((n-1)*var(df$Artist_Popularity))
+RMSE(predict(dt_pruned, newx = as.matrix(df[,-11])), as.matrix(df[,11]))
+R2(predict(dt_pruned, newx = as.matrix(df[,-11])), as.matrix(df[,11])) # lower R^2 after pruning
+
+```
+```{r}
+
+library("caret")
+
+# DT CV on full data
+
+caret.control <- trainControl(method = "repeatedcv",
+                              number = 10,
+                              repeats = 3)
+set.seed(42)
+rpart.cv <- caret::train(Artist_Popularity ~ ., 
+                         data = df,
+                         method = "rpart",
+                         trControl = caret.control,
+                         tuneLength = 15)
+
+rpart.cv
+rpart.best.cv <- rpart.cv$finalModel
+rpart.best.cv
+rpart.plot(rpart.best.cv)
+
+RMSE(predict(rpart.best.cv, newdata = df), df$Artist_Popularity) # corresponds exactly to the pruned tree solution
+R2(predict(rpart.best.cv, newdata = df), df$Artist_Popularity) # corresponds exactly to the pruned tree solution
+
+# DT CV on split data
+
+set.seed(42)
+idx.train <- createDataPartition(y = df$Artist_Popularity, p = 0.75, list = FALSE)
+train.data <- df[idx.train, ]
+test.data <- df[-idx.train,]
+
+caret.control <- trainControl(method = "repeatedcv",
+                              number = 10,
+                              repeats = 3)
+set.seed(42)
+rpart.cv <- caret::train(Artist_Popularity ~ ., 
+                  data = train.data,
+                  method = "rpart",
+                  trControl = caret.control,
+                  tuneLength = 15)
+
+rpart.cv
+rpart.best.cv <- rpart.cv$finalModel
+rpart.best.cv
+rpart.plot(rpart.best.cv)
+
+
+
+RMSE(predict(rpart.best.cv, newdata = train.data), train.data$Artist_Popularity)
+R2(predict(rpart.best.cv, newdata = train.data), train.data$Artist_Popularity)
+
+performace_metrics[8,3] <- RMSE(predict(rpart.best.cv, newdata = train.data), train.data$Artist_Popularity)
+performace_metrics[8,4] <- R2(predict(rpart.best.cv, newdata = train.data), train.data$Artist_Popularity)
+
+RMSE(predict(rpart.best.cv, newdata = test.data), test.data$Artist_Popularity)
+R2(predict(rpart.best.cv, newdata = test.data), test.data$Artist_Popularity)
+
+performace_metrics[8,5] <- RMSE(predict(rpart.best.cv, newdata = test.data), test.data$Artist_Popularity)
+performace_metrics[8,6] <- R2(predict(rpart.best.cv, newdata = test.data), test.data$Artist_Popularity)
+
+#########################################################################
+
+library("randomForest")
+set.seed(42)
+rf <-randomForest(Artist_Popularity~fa_1+fa_2+fa_3+fa_4+pc_1+pc_2+Artist_Follower+days_release_orig
+                  +Track_Popularity+Track_Duration_ms+fa_2sq+pc_2sq+Artist_Followersq, data=df, cp = 0, method = 'anova')
+summary(rf)
+imp <- importance(rf)
+ind <- order(imp, decreasing=T)
+imp[ind,]
+rf_pred <- predict(rf, df, type="class")
+n <- nrow(df)
+1-sum(residuals(rf)^2)/((n-1)*var(df$Artist_Popularity))
+
+RMSE(predict(rf, newdata = df), df$Artist_Popularity)
+R2(predict(rf, newdata = df), df$Artist_Popularity)
+
+performace_metrics[9,1] <- RMSE(predict(rf, newdata = df), df$Artist_Popularity)
+performace_metrics[9,2] <- R2(predict(rf, newdata = df), df$Artist_Popularity)
+
+# RMSE(predict(rf, newdata = train.data), train.data$Artist_Popularity)
+# R2(predict(rf, newdata = train.data), train.data$Artist_Popularity)
+
+# RMSE(predict(rf, newdata = test.data), test.data$Artist_Popularity)
+# R2(predict(rf, newdata = test.data), test.data$Artist_Popularity)
+
+
+#########################################################################
+library("data.table")
+library("mlr")
+
+rf_train <- as.data.table(train)
+rf_test <- as.data.table(test)
+
+task <- makeRegrTask(data = train, target = "Artist_Popularity")
+
+rf_learner <- makeLearner("regr.randomForest", 
+                          predict.type = "response")
+
+rf.parms <- makeParamSet(
+  # The recommendation for mtry by Breiman is squareroot number of columns
+  makeDiscreteParam("mtry", values = c(2,3,4,5,6)), # Number of features selected at each node, smaller -> faster
+  makeDiscreteParam("sampsize", values =  c(30, 50, 70)), # bootstrap sample size, smaller -> faster
+  makeDiscreteParam("ntree", values = c(10,30,50,100, 500, 1000)) # Number of tree, smaller -> faster
+) 
+
+tuneControl <- makeTuneControlGrid(resolution = 3, tune.threshold = FALSE)
+
+rdesc <- makeResampleDesc(method = "CV", iters = 5, stratify = FALSE)
+
+library("parallelMap")
+
+parallelStartSocket(4, level = "mlr.tuneParams")
+
+#tuning <- tuneParams(rf_learner, task = task, resampling = rdesc,
+#                     par.set = rf.parms, control = tuneControl, measures = mlr::rmse)
+
+# https://stackoverflow.com/questions/51333410/mlr-why-does-reproducibility-of-hyperparameter-tuning-fail-using-parallelizatio
+
+suppressMessages({
+
+  set.seed(123456, "L'Ecuyer-CMRG")
+  clusterSetRNGStream(iseed = 123456)
+  tuning <- tuneParams(rf_learner, task = task, resampling = rdesc,
+                     par.set = rf.parms, control = tuneControl, measures = mlr::rmse)
+  
+})
+
+parallelStop()
+tuning$x
+
+tuning_results <- generateHyperParsEffectData(tuning, partial.dep = TRUE)
+
+tuning_results$data
+
+tapply(tuning_results$data$rmse.test.rmse, INDEX = c(tuning_results$data$mtry), mean)
+rf_tuned <- setHyperPars(rf_learner, par.vals = tuning$x)
+rf_model <- mlr::train(rf_tuned, task = task)
+rf_pred_train <- predict(rf_model, newdata = train, type = "response")
+rf_pred_test <- predict(rf_model, newdata = test, type = "response")
+# rf_pred_train$data$response
+# rf_pred_test$data$response
+
+RMSE(predict(rf_model, newdata = train, type = "response")$data$response, train$Artist_Popularity)
+R2(predict(rf_model, newdata = train, type = "response")$data$response, train$Artist_Popularity)
+
+performace_metrics[9,3] <- RMSE(predict(rf_model, newdata = train, type = "response")$data$response, train$Artist_Popularity)
+performace_metrics[9,4] <- R2(predict(rf_model, newdata = train, type = "response")$data$response, train$Artist_Popularity)
+
+RMSE(predict(rf_model, newdata = test, type = "class")$data$response, test$Artist_Popularity)
+R2(predict(rf_model, newdata = test, type = "class")$data$response, test$Artist_Popularity)
+
+performace_metrics[9,5] <- RMSE(predict(rf_model, newdata = test, type = "response")$data$response, test$Artist_Popularity)
+performace_metrics[9,6] <- R2(predict(rf_model, newdata = test, type = "response")$data$response, test$Artist_Popularity)
+
+```
+```{r}
+
+library("MASS")
+library("nnet")
+
+df_z <- scale(as.matrix(df))
+train_z <- as.data.frame(df_z[idx.train, ])
+test_z <- as.data.frame(df_z[-idx.train,])
+
+mean_mat <- matrix(, nrow = dim(df)[1], ncol = dim(df)[2])
+mean_mat[1, ] <- as.numeric(sapply(df, mean, na.rm = TRUE))
+
+library("zoo")
+mean_mat <- na.locf(mean_mat)
+
+diag_sd <- diag(sapply(df, sd, na.rm = TRUE))
+
+# Backtransformation scale to orginal
+
+as.matrix(df_z) %*% diag_sd + mean_mat
+
+task <- makeRegrTask(data = train_z, target = "Artist_Popularity")
+nnet <- makeLearner("regr.nnet", predict.type = "response", par.vals = list("trace" = FALSE, "maxit" = 1000,
+                                                                           "MaxNWts" = 80000))
+
+nn.parms <- makeParamSet(
+  makeDiscreteParam("decay", values = c(0.0001,0.001, 0.01, 0.1)), 
+  makeDiscreteParam("size", values = c(2,4,6,8,10,12,14)))
+
+tuneControl <- makeTuneControlGrid(resolution = 3, tune.threshold = FALSE)
+
+rdesc <- makeResampleDesc(method = "CV", iters = 5, stratify = FALSE)
+
+
+parallelStartSocket(4, level = "mlr.tuneParams")
+
+# tuning <- tuneParams(nnet, task = task, resampling = rdesc, par.set = nn.parms, control = tuneControl,
+#                     measures = mlr::rmse)
+
+suppressMessages({
+
+  set.seed(123456, "L'Ecuyer-CMRG")
+  clusterSetRNGStream(iseed = 123456)
+  tuning <- tuneParams(nnet, task = task, resampling = rdesc, par.set = nn.parms, control = tuneControl,
+                     measures = mlr::rmse)
+})
+
+parallelStop()
+tuning$x # result with full data set was decay = 1e-04, size = 2, rmse.test.rmse = 0.4336486
+tuning_results <- generateHyperParsEffectData(tuning, partial.dep = FALSE)
+
+plotHyperParsEffect(tuning_results, x = "size", y = "rmse.test.rmse")
+plotHyperParsEffect(tuning_results, x = "decay", y = "rmse.test.rmse")
+
+nnet.tuned <- setHyperPars(nnet, par.vals = tuning$x)
+nn_model <- mlr::train(nnet.tuned, task = task)
+
+nn_pred_train <- predict(nn_model, newdata = train_z, type = "response")
+nn_pred_test <- predict(nn_model, newdata = test_z, type = "response")
+
+RMSE(predict(nn_model, newdata = train_z, type = "response")$data$response, train_z$Artist_Popularity)
+R2(predict(nn_model, newdata = train_z, type = "response")$data$response, train_z$Artist_Popularity)
+
+RMSE(predict(nn_model, newdata = test_z, type = "response")$data$response, test_z$Artist_Popularity)
+R2(predict(nn_model, newdata = test_z, type = "response")$data$response, test_z$Artist_Popularity)
+
+# Scale predictions back to original:
+
+# as.matrix(train_z[, 11]) %*% diag_sd[11,11] + mean_mat[1,11] == train[,11]
+
+RMSE(as.matrix(nn_pred_train$data$response) %*% diag_sd[11,11] + mean_mat[1,11], train$Artist_Popularity)
+R2(as.matrix(nn_pred_train$data$response) %*% diag_sd[11,11] + mean_mat[1,11], train$Artist_Popularity)
+
+performace_metrics[10,3] <- RMSE(as.matrix(nn_pred_train$data$response) %*% diag_sd[11,11] + mean_mat[1,11], train$Artist_Popularity)
+performace_metrics[10,4] <- R2(as.matrix(nn_pred_train$data$response) %*% diag_sd[11,11] + mean_mat[1,11], train$Artist_Popularity)
+
+RMSE(as.matrix(nn_pred_test$data$response) %*% diag_sd[11,11] + mean_mat[1,11], test$Artist_Popularity)
+R2(as.matrix(nn_pred_test$data$response) %*% diag_sd[11,11] + mean_mat[1,11], test$Artist_Popularity)
+
+performace_metrics[10,5] <- RMSE(as.matrix(nn_pred_test$data$response) %*% diag_sd[11,11] + mean_mat[1,11], test$Artist_Popularity)
+performace_metrics[10,6] <- R2(as.matrix(nn_pred_test$data$response) %*% diag_sd[11,11] + mean_mat[1,11], test$Artist_Popularity)
+
+
+```
+
+
+```{r}
+
+round(performace_metrics, digits = 2)
+
+
+
+```
+
+
+```{r}
+# Classification
+
+df$Charts <- as.factor(x_noout$Charts)
+set.seed(42)
+rpart <- rpart(data = df,Charts~.,method = 'class')
+rpart.plot(rpart)
+rf_pred <- predict(rpart, newdata = df, type = "class")
+confMat <- table(df$Charts,rf_pred)
+confMat # 0: not in charts, 1: in charts
+accuracy <- sum(diag(confMat))/sum(confMat)
+accuracy
+
+# 0.9623656
+
+par(mfrow=c(1,1))
+printcp(rpart)
+plotcp(rpart)
+rpart$cptable
+best.cp <- rpart$cptable[which.min(rpart$cptable[,"xerror"]),"CP"]
+best.cp
+
+set.seed(42)
+rpart_pruned <- prune(rpart, cp=best.cp)
+rpart.plot(rpart_pruned)
+rf_pred <- predict(rpart_pruned, newdata = df, type = "class")
+confMat <- table(df$Charts,rf_pred)
+confMat # 0: not in charts, 1: in charts
+accuracy <- sum(diag(confMat))/sum(confMat)
+accuracy
+
+# 0.9569892
+
+library("caret")
+
+train.data <- df[idx.train, ]
+test.data <- df[-idx.train,]
+
+caret.control <- trainControl(method = "repeatedcv",
+                              number = 10,
+                              repeats = 3)
+
+set.seed(42)
+rpart.cv <- caret::train(Charts ~ ., 
+                         data = train.data,
+                         method = "rpart",
+                         trControl = caret.control,
+                         tuneLength = 15)
+
+rpart.cv
+
+set.seed(42)
+rpart.best.cv <- rpart.cv$finalModel
+rpart.best.cv
+rpart.plot(rpart.best.cv)
+
+rpart_pred <- predict(rpart.best.cv, newdata = train.data, type = "class")
+confMat <- table(train.data$Charts,rpart_pred)
+confMat # 0: not in charts, 1: in charts
+accuracy <- sum(diag(confMat))/sum(confMat)
+accuracy
+
+# 0.9507042
+
+rpart_pred <- predict(rpart.best.cv, newdata = test.data, type = "class")
+confMat <- table(test.data$Charts,rpart_pred)
+confMat # 0: not in charts, 1: in charts
+accuracy <- sum(diag(confMat))/sum(confMat)
+accuracy
+
+# 0.9318182
+
+#################################################
+
+# Random forest
+
+rf_train <- train.data
+rf_test <- test.data
+task <- makeClassifTask(data = rf_train, target = "Charts", positive = "1")
+rf_learner <- makeLearner("classif.randomForest", 
+                          predict.type = "prob", # prediction type needs to be specified for the learner 
+                          par.vals = list("replace" = TRUE, "importance" = FALSE))
+
+rf.parms <- makeParamSet(
+  # The recommendation for mtry by Breiman is squareroot number of columns
+  makeDiscreteParam("mtry", values = c(2,3,4,5,6)), # Number of features selected at each node, smaller -> faster
+  makeDiscreteParam("sampsize", values =  c(30, 50, 70)), # bootstrap sample size, smaller -> faster
+  makeDiscreteParam("ntree", values = c(10,30,50,100, 500, 1000)) # Number of tree, smaller -> faster
+) 
+
+tuneControl <- makeTuneControlGrid(resolution = 3, tune.threshold = FALSE)
+
+rdesc <- makeResampleDesc(method = "CV", iters = 5, stratify = TRUE)
+
+parallelStartSocket(4, level = "mlr.tuneParams")
+
+
+suppressMessages({
+
+  set.seed(123456, "L'Ecuyer-CMRG")
+  clusterSetRNGStream(iseed = 123456)
+  tuning <- tuneParams(rf_learner, task = task, resampling = rdesc,
+                     par.set = rf.parms, control = tuneControl, measures = mlr::auc)
+})
+
+
+parallelStop()
+tuning$x
+
+tuning_results <- generateHyperParsEffectData(tuning, partial.dep = TRUE)
+
+tuning_results$data
+tapply(tuning_results$data$auc.test.mean, INDEX = c(tuning_results$data$mtry), mean)
+rf_tuned <- setHyperPars(rf_learner, par.vals = tuning$x)
+rf_model <- mlr::train(rf_tuned, task = task)
+rf_pred <- predict(rf_model, newdata = train.data, type = "class")
+# rf_pred$data$response
+confMat <- table(train.data$Charts,rf_pred$data$response)
+confMat # 0: not in charts, 1: in charts
+accuracy <- sum(diag(confMat))/sum(confMat)
+accuracy
+
+# 1
+
+rf_pred <- predict(rf_model, newdata = test.data, type = "class")
+# rf_pred$data$response
+confMat <- table(test.data$Charts,rf_pred$data$response)
+confMat # 0: not in charts, 1: in charts
+accuracy <- sum(diag(confMat))/sum(confMat)
+accuracy
+
+# 1
+
+# Neural net classification
+
+df$Charts <- x_noout$Charts
+train_z$Charts <- df[idx.train, "Charts"]
+test_z$Charts <- df[-idx.train, "Charts"]
+
+
+task <- makeClassifTask(data = train_z, target = "Charts", positive = "1")
+nnet <- makeLearner("classif.nnet", predict.type = "prob", par.vals = list("trace" = FALSE, "maxit" = 1000,
+                                                                           "MaxNWts" = 80000))
+
+nn.parms <- makeParamSet(
+  makeDiscreteParam("decay", values = c(0.0001,0.001, 0.01, 0.1)), 
+  makeDiscreteParam("size", values = c(2,4,6,8,10,12,14)))
+
+tuneControl <- makeTuneControlGrid(resolution = 3, tune.threshold = FALSE)
+
+rdesc <- makeResampleDesc(method = "CV", iters = 5, stratify = TRUE)
+
+
+parallelStartSocket(4, level = "mlr.tuneParams")
+
+suppressMessages({
+
+  set.seed(123456, "L'Ecuyer-CMRG")
+  clusterSetRNGStream(iseed = 123456)
+  tuning <- tuneParams(nnet, task = task, resampling = rdesc, par.set = nn.parms, control = tuneControl,
+                     measures = mlr::auc)
+})
+
+parallelStop()
+tuning$x # result with full data set was decay = 1e-04, size = 2, rmse.test.rmse = 0.4336486
+tuning_results <- generateHyperParsEffectData(tuning, partial.dep = FALSE)
+
+plotHyperParsEffect(tuning_results, x = "size", y = "auc.test.mean")
+plotHyperParsEffect(tuning_results, x = "decay", y = "auc.test.mean")
+
+nnet.tuned <- setHyperPars(nnet, par.vals = tuning$x)
+nn_model <- mlr::train(nnet.tuned, task = task)
+
+model <- mlr::train(nnet.tuned, task = task)
+
+nn_pred_train <- predict(model, newdata = train_z, type = "class")
+nn_pred_test <- predict(model, newdata = test_z, type = "class")
+
+confMat <- table(train_z$Charts,nn_pred_train$data$response)
+confMat # 0: not in charts, 1: in charts
+accuracy <- sum(diag(confMat))/sum(confMat)
+accuracy
+
+# 1
+
+confMat <- table(test_z$Charts,nn_pred_test$data$response)
+confMat # 0: not in charts, 1: in charts
+accuracy <- sum(diag(confMat))/sum(confMat)
+accuracy
+
+# 1
+```
+
+
+```
+

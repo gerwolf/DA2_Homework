@@ -40,7 +40,7 @@ x$Charts <- as.factor(x$Charts)
 library("dplyr")
 
 x <- dplyr::select(x, -one_of('Streams'))
-x <- no_streams_nonan[complete.cases(no_streams_nonan), ]
+x <- x[complete.cases(x), ]
 
 audio_features <- c('acousticness' , 'danceability' ,'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
 x_features <- dplyr::select(x, audio_features)
@@ -83,8 +83,8 @@ library(corrplot)
 col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
 
 corrplot(pc_cor$rotation, method="color", col=col(200), 
-         addCoef.col = "black", # Add coefficient of correlation
-         tl.col="black", tl.srt=90, #Text label color and rotation
+        addCoef.col = "black", # Add coefficient of correlation
+        tl.col="black", tl.srt=90, #Text label color and rotation
          diag=TRUE, mar = c(0,0,5,5), title = 'PCA - loadings matrix')
 
 plot(scores[,1], scores[,2]) # both plots are identical
@@ -99,6 +99,10 @@ library("psych")
 psych_pca <- psych::principal(z, nfactors = 9, rotate = "none")
 
 scree(z)
+
+
+
+# plot.matrix::plot(psych_pca$loadings, las=2)
 
 psych_pca$scores[,1]*sqrt(psych_pca$values[1]) # == scores[,1]
 
@@ -412,5 +416,16 @@ z[!out$nonOut,] #  as we can confirm, the outlying cases differ strongly in thei
                 # especially liveness and energy are inconsistent with the model
 x[rownames(z[!out$nonOut,]),c("Track_Title", "Track_Artist", "Genre", "Track_Popularity")]
 
+library("paran")
+
+paran(z, centile=95, all=T, graph=T)
+
+# Final result: use two components to describe music theoretical characteristics and extract the scores as new variables
+
+x$pc_1 <- pc_cor$x[,1]
+x$pc_2 <- pc_cor$x[,2]
 
 
+library("xlsx")
+
+write.xlsx(x,"C:\\Users\\wolfg\\Desktop\\Uni\\HU Master\\Datenanalyse II\\DA2_Homework\\pca_df.xlsx", row.names = TRUE)

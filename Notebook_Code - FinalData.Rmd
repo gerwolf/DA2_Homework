@@ -57,17 +57,17 @@ x$Charts <- as.factor(x$Charts)
 library("dplyr")
 
 drop.cols <- c('Artist_ID', 'Genre', 'Release_Date', 'Track_Artist', 'Track_ID', 'Track_Title', 'video_ID', 'key', 'time_signature', 'Streams', 'Charts', 'mode', 'key')
-numeric_x <- select(x, -one_of(drop.cols))
+numeric_x <- dplyr::select(x, -one_of(drop.cols))
 
 keep.cols <- c('Artist_Follower', 'Track_Duration_ms', 'viewsCount', 'Track_Popularity', 'Artist_Popularity', 'danceability')
 
 # keep.cols <- c('Streams', 'viewsCount', 'Title_Youtube_searches_11m')
 
-selected_pairs <- select(x, keep.cols)
+selected_pairs <- dplyr::select(x, keep.cols)
 
 pairs(selected_pairs, cex=0.5)
 
-no_streams_nonan <- select(x, -one_of('Streams'))
+no_streams_nonan <- dplyr::select(x, -one_of('Streams'))
 no_streams_nonan <- no_streams_nonan[complete.cases(no_streams_nonan), ]
 
 
@@ -210,7 +210,7 @@ Distribution testing
 strictly_positive_variables <- c('Artist_Follower', 'Artist_Popularity', 'Track_Duration_ms', 'Track_Popularity', 'viewsCount', 'acousticness', 'danceability', 'energy', 'liveness', 'loudness', 'speechiness', 'tempo', 'valence')
 
 
-summary(select(x, strictly_positive_variables))
+summary(dplyr::select(x, strictly_positive_variables))
 
 
 for (i in 1:length(strictly_positive_variables)){
@@ -462,7 +462,7 @@ $H_1$: two variables are not jointly normal distributed
 
 ```{r}
 
-bivariate_df1 <- select(x, c('Streams', 'viewsCount'))
+bivariate_df1 <- dplyr::select(x, c('Streams', 'viewsCount'))
 
 bivariate_df1 <- bivariate_df1[complete.cases(bivariate_df1), ]
 
@@ -818,7 +818,7 @@ library("Rmpfr")
 
 cor <- cor(numeric_x)
 drop.cor_cols <- c('Artist_Compilations_Number', 'Artist_Compilations_Tracks_Number', 'Streams')
-numeric_cor_x <- select(numeric_x, -one_of(drop.cor_cols))
+numeric_cor_x <- dplyr::select(numeric_x, -one_of(drop.cor_cols))
 
 numeric_cor_x$viewsCount <- as.numeric(numeric_cor_x$viewsCount)
 
@@ -1265,6 +1265,7 @@ ax <- selected_columns[, names(selected_columns) != "color"]
 ax$clr <- as.numeric(ifelse(selected_columns$color == 'black', 0, 1))
 andrews(ax, ymax=4, clr=10, main = music_genre)
 
+par(mfrow = c(1,2))
 
 palette <- c('red', 'blue', 'black', 'purple')
 palette <- rainbow(length(levels(as.factor(x$Genre))))
