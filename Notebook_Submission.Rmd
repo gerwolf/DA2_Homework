@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Datenanalyse 2 - Accompanying code"
 output: html_notebook
 ---
 
@@ -904,7 +904,7 @@ palette <- c('red', 'blue', 'black', 'purple')
 my_colors <- palette[as.numeric(x$Genre)]
 
 par(mfrow=c(1,1))
-plot(scores[, 1:2], col = my_colors, pch = 19, xlab = "Scores PC1", ylab = "Scores PC2")
+plot(scores[, 1:2], col = my_colors, pch = 19, xlab = "Scores PC1 (47.84% expl. variance)", ylab = "Scores PC2 (16.25% expl. variance)")
 legend("topleft", legend = levels(as.factor(x$Genre)), col = palette, pch = 16, horiz = T)
 #plot(pc_cor$rotation[, 1:2])
 par(mfrow=c(1,1))
