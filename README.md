@@ -12,6 +12,11 @@
 
 This project analyses musictheoretical variables, "audio features" (<a href = "http://web.media.mit.edu/~tristan/phd/dissertation/index.html" target="_blank">Jehan, 2005</a>) for unsupervised learning. Artist specific information is additionally used to predict artist popularity (0,100) and whether the artist/song was a "chartbreaker" in the German Spotify market (Feb 2019 - Mar 2020) or not. The code accompanying the paper can be found in "Notebook_Submission.Rmd". A <a href = "https://rpubs.com/gerwolf/da2_assignment_spotify" target="_blank">rendered version</a> of the code can be found on RPubs. Feel free to reach out to me if you have questions!
 
+> Fun fact: the three most streamed tracks in Germany in this period were
+1. Dance Monkey by Tones and I (107 million streams)
+2. Roller by Apache 207 (80 million streams)
+3. bad guy by Billie Eilish (77 million streams)
+
 ## Statistical methods used:
 
 - Correlation coefficients
