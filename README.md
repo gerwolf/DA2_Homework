@@ -5,12 +5,12 @@
 </a>
 </p>
 
-# Datenanalyse 2 Homework Assignment
+# Data analysis II - Homework Assignment (Humboldt University Berlin)
 > A multivariate data analysis of music streaming
 
 > Spotify, Music, Statistics, Streaming, Popularity
 
-This project analyses musictheoretical variables, "audio features" (<a href = "http://web.media.mit.edu/~tristan/phd/dissertation/index.html" target="_blank">Jehan, 2005</a>) for unsupervised learning. Artist specific information is additionally used to predict artist popularity (0,100) and whether the artist/song was a "chartbreaker" in the German Spotify market (Feb 2019 - Mar 2020) or not. The code accompanying the paper can be found in "Notebook_Submission.Rmd"
+This project analyses musictheoretical variables, "audio features" (<a href = "http://web.media.mit.edu/~tristan/phd/dissertation/index.html" target="_blank">Jehan, 2005</a>) for unsupervised learning. Artist specific information is additionally used to predict artist popularity (0,100) and whether the artist/song was a "chartbreaker" in the German Spotify market (Feb 2019 - Mar 2020) or not. The code accompanying the paper can be found in "Notebook_Submission.Rmd". A <a href = "https://rpubs.com/gerwolf/da2_assignment_spotify" target="_blank">rendered version</a> of the code can be found on RPubs. Feel free to reach out to me if you have questions!
 
 ## Statistical methods used:
 
