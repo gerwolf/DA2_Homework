@@ -1,7 +1,7 @@
 <p align = "center">
 
-<a href="http://fvcproductions.com">
-	<img src="https://developer.spotify.com/assets/branding-guidelines/logo@2x.png" title="FVCproductions" alt="FVCproductions">
+<a href="https://developer.spotify.com/documentation/web-api/reference/tracks/get-audio-features/">
+	<img src="https://developer.spotify.com/assets/branding-guidelines/logo@2x.png" title="Spotify Web API">
 </a>
 </p>
 
