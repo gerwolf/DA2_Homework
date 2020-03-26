@@ -1,6 +1,10 @@
 ---
 title: "Datenanalyse 2 - Accompanying code"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
 ---
 
 
@@ -623,9 +627,9 @@ chisq.test(tab, simulate.p.value = TRUE)
 library("vcd")
 assocstats(tab)
 
-library("openintro")
+#library("openintro")
 
-contTable(tab)
+#contTable(tab)
 
 ```
 
@@ -658,7 +662,7 @@ chisq.test(tab, simulate.p.value = TRUE)
 library("vcd")
 assocstats(tab)
 
-contTable(tab)
+#contTable(tab)
 
 ```
 
@@ -718,7 +722,7 @@ tab2 <- table(x$Artist_Popularity_quantile,
 
 tab2
 
-contTable(tab2)
+# contTable(tab2)
 
 
 tab <- rowSums(tab2)
@@ -2265,7 +2269,7 @@ df <- n - d
 
 
 
-plot(Artist_Follower_trans, x$Artist_Popularity)
+#plot(Artist_Follower_trans, x$Artist_Popularity)
 
 #min_max_normalize <- function(x)
 #{
@@ -2424,7 +2428,7 @@ lasso_res2 <- as.numeric(df$Artist_Popularity - predict(lasso.cv, x_full))^2
 elasticnet_res2 <- as.numeric(df$Artist_Popularity - predict(elasticnet.cv, x_full))^2
 
 par(mfcol=c(2,2))
-barplot((df$Artist_Popularity - predict(lmfull, df))^2, labels = FALSE)
+barplot((df$Artist_Popularity - predict(lmfull, df))^2)
 Axis(side=2)
 title(main = paste("LM (full sample): RMSE =",round(RMSE(predict(lmfull, df), df$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(lmfull, df), df$Artist_Popularity), digits = 2)))
 barplot(ridge_res2, main = paste("Ridge (full sample): RMSE =",round(RMSE(predict(ridge.cv, x_full), df$Artist_Popularity), digits = 2), ", R^2:", round(R2(predict(ridge.cv, x_full), df$Artist_Popularity), digits = 2)))
@@ -2565,7 +2569,7 @@ rug(df$Track_Duration_ms)
 
 bw <- npudensbw(~Artist_Popularity+Track_Duration_ms, data=df, bwmethod="normal-reference")
 fhat <- npudens(bw)
-plot(fhat) # bi-modal
+# plot(fhat) # bi-modal
 
 par(mfcol=c(1,1))
 #1) at Track_Duration_ms ~ 1 and Artist_Popularity ~ -1 (meaning longer tracks' artists are less popular)
@@ -2577,7 +2581,7 @@ plot(fhat, view="fixed", phi=10, theta=155, main = "")
 par(mfcol=c(1,1))
 nw2 <- npreg(Artist_Popularity~pc_2+Track_Duration_ms, data=df)
 summary(nw2)
-plot(nw2)
+# plot(nw2)
 
 # Nadaraya-Watson estimator
 
@@ -2622,8 +2626,8 @@ plotContour(model, df)
 
 library("mgcv")
 model <- gam(Artist_Popularity~s(Track_Popularity)+Track_Duration_ms, data=df)
-plotContour(model, df$Track_Popularity, df$Track_Duration_ms, df$Artist_Popularity)
-plot(model)
+# plotContour(model, df$Track_Popularity, df$Track_Duration_ms, df$Artist_Popularity)
+# plot(model)
 
 # Additive model
 
@@ -2829,6 +2833,7 @@ performace_metrics[9,2] <- R2(predict(rf, newdata = df), df$Artist_Popularity)
 #########################################################################
 library("data.table")
 library("mlr")
+library("parallel")
 
 rf_train <- as.data.table(train)
 rf_test <- as.data.table(test)
@@ -2914,7 +2919,7 @@ diag_sd <- diag(sapply(df, sd, na.rm = TRUE))
 
 # Backtransformation scale to orginal
 
-as.matrix(df_z) %*% diag_sd + mean_mat
+# as.matrix(df_z) %*% diag_sd + mean_mat
 
 task <- makeRegrTask(data = train_z, target = "Artist_Popularity")
 nnet <- makeLearner("regr.nnet", predict.type = "response", par.vals = list("trace" = FALSE, "maxit" = 1000,
