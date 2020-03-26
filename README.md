@@ -24,7 +24,15 @@ This project analyses musictheoretical variables, "audio features" (<a href = "h
 - Decision trees and neural networks
 - Cross validation
 
-## Data used:
+## Data sources:
 
+- <a href = "https://spotifycharts.com/" target="_blank">Spotify Charts</a> (Top 200, daily)
 - <a href = "https://developer.spotify.com/documentation/web-api/" target="_blank">Spotify Web API</a>
 - <a href = "https://developers.google.com/youtube/v3" target="_blank">YouTube Data API</a>
+
+## Programming languages:
+
+- Python / Jupyter
+- R / Markdown
+- Stata
+- LaTex
