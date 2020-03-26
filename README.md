@@ -10,4 +10,4 @@
 
 > Spotify, Music, Statistics, Streaming, Popularity
 
-This project analyses musictheoretical variables, "audio features" (<a href = "http://web.media.mit.edu/~tristan/phd/dissertation/index.html"> </a>)for unsupervised learning. Artist specific information is additionally used to predict artist popularity (0,100) and whether the artist/song was a "chartbreaker" in the German Spotify market or not.
+This project analyses musictheoretical variables, "audio features" (<a href = "http://web.media.mit.edu/~tristan/phd/dissertation/index.html" title = "Jehan, 2005"> </a>)for unsupervised learning. Artist specific information is additionally used to predict artist popularity (0,100) and whether the artist/song was a "chartbreaker" in the German Spotify market or not.
